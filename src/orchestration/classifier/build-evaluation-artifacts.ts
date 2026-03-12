@@ -1,10 +1,11 @@
 import type { EvaluationInput } from '../../domain/context/index.js';
 import type { ApprovalRequest } from '../../domain/approval/index.js';
 import type { AuditRecord } from '../../domain/audit/index.js';
-import type { PolicyDecision } from '../../domain/policy/index.js';
+import { derivePolicyDecisionSemantics, type PolicyDecision } from '../../domain/policy/index.js';
 import type { RiskEvent } from '../../domain/risk/index.js';
 import {
   ApprovalCategory,
+  ApprovalResultStatus,
   PolicyDecisionReasonCode,
   ResponseAction,
   RiskTriggerSource,
@@ -80,10 +81,7 @@ function buildPolicyDecision(
       decision: ResponseAction.Block,
       reason_code: PolicyDecisionReasonCode.SessionSendPolicy,
       reason: 'Session send policy denies outbound delivery.',
-      requires_approval: false,
-      block_immediately: true,
-      can_continue: false,
-      can_remember: false,
+      ...derivePolicyDecisionSemantics(ResponseAction.Block),
     };
   }
 
@@ -94,10 +92,7 @@ function buildPolicyDecision(
       decision: primaryMatch.recommended_action,
       reason_code: mapRuleMatchToReasonCode(primaryMatch),
       reason: primaryMatch.reason,
-      requires_approval: primaryMatch.recommended_action === ResponseAction.ApproveRequired,
-      block_immediately: primaryMatch.recommended_action === ResponseAction.Block,
-      can_continue: primaryMatch.recommended_action === ResponseAction.Allow,
-      can_remember: primaryMatch.recommended_action === ResponseAction.ApproveRequired,
+      ...derivePolicyDecisionSemantics(primaryMatch.recommended_action),
     };
   }
 
@@ -107,10 +102,7 @@ function buildPolicyDecision(
       decision: ResponseAction.ApproveRequired,
       reason_code: PolicyDecisionReasonCode.SessionExecPolicy,
       reason: 'Session exec policy requires approval before execution.',
-      requires_approval: true,
-      block_immediately: false,
-      can_continue: false,
-      can_remember: true,
+      ...derivePolicyDecisionSemantics(ResponseAction.ApproveRequired),
     };
   }
 
@@ -119,10 +111,7 @@ function buildPolicyDecision(
     decision: ResponseAction.Allow,
     reason_code: PolicyDecisionReasonCode.DefaultAllow,
     reason: 'No blocking or approval-only session policy matched this tool call.',
-    requires_approval: false,
-    block_immediately: false,
-    can_continue: true,
-    can_remember: false,
+    ...derivePolicyDecisionSemantics(ResponseAction.Allow),
   };
 }
 
@@ -195,6 +184,7 @@ function buildAuditRecord(
     decision_id: policyDecision.decision_id,
     tool_name: evaluationInput.tool_name,
     decision: policyDecision.decision,
+    approval_result: policyDecision.requires_approval ? ApprovalResultStatus.Pending : undefined,
     execution_result,
     timestamp: evaluationInput.agent_event?.timestamp ?? evaluationInput.run_ref.started_at ?? clock.now(),
     final_status: mapExecutionResultToFinalStatus(execution_result, policyDecision.decision),

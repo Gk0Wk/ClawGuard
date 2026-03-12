@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { selectPrimaryRuleMatch } from '../../src/orchestration/classifier/evaluation-outcomes.js';
+import { matchCommandRules } from '../../src/orchestration/classifier/command-rules.js';
 import type { FastPathRuleMatch } from '../../src/orchestration/classifier/rule-match.js';
 import { ResponseAction, RiskDomain, RiskSeverity } from '../../src/index.js';
 
@@ -63,5 +64,14 @@ describe('evaluation outcomes', () => {
 
     expect(selectPrimaryRuleMatch([first, second])).toBe(first);
     expect(selectPrimaryRuleMatch([second, first])).toBe(second);
+  });
+
+  it('keeps the first matched command rule when real command matches tie exactly', () => {
+    const matches = matchCommandRules('sudo chmod 777 /tmp/app && chown root:root /tmp/app');
+
+    expect(matches.map((match) => match.rule_id)).toEqual(
+      expect.arrayContaining(['exec.privilege.escalation', 'exec.system.configuration']),
+    );
+    expect(selectPrimaryRuleMatch(matches)?.rule_id).toBe('exec.privilege.escalation');
   });
 });

@@ -12,7 +12,7 @@ interface CommandRuleDefinition {
   readonly pattern: RegExp;
 }
 
-const commandBoundary = String.raw`(?:^|\s*(?:&&|[;|])\s*)`;
+const commandBoundary = String.raw`(?:^|\s*(?:&&|[;|])\s*)(?:sudo\s+)?`;
 
 const commandRuleDefinitions: readonly CommandRuleDefinition[] = [
   {

@@ -66,50 +66,62 @@ function createResult(result: FinalApprovalResultStatus) {
 describe('approval closure', () => {
   it.each([
     {
-      label: 'approved',
+      label: 'approved (gate cleared, execution pending)',
       result: ApprovalResultStatus.Approved as FinalApprovalResultStatus,
       decisionOutcome: ResponseAction.Allow,
-      riskEventStatus: RiskEventStatus.Approved,
+      riskEventStatusAfterClosure: RiskEventStatus.Approved,
       executionResult: undefined,
       auditRecordFinalStatus: AuditRecordFinalStatus.Logged,
     },
     {
-      label: 'denied',
+      label: 'denied (explicit block)',
       result: ApprovalResultStatus.Denied as FinalApprovalResultStatus,
       decisionOutcome: ResponseAction.Block,
-      riskEventStatus: RiskEventStatus.Denied,
+      riskEventStatusAfterClosure: RiskEventStatus.Denied,
       executionResult: ExecutionStatus.Blocked,
       auditRecordFinalStatus: AuditRecordFinalStatus.Blocked,
     },
     {
-      label: 'expired',
+      label: 'expired (implicit block)',
       result: ApprovalResultStatus.Expired as FinalApprovalResultStatus,
       decisionOutcome: ResponseAction.Block,
-      riskEventStatus: RiskEventStatus.Blocked,
+      riskEventStatusAfterClosure: RiskEventStatus.Blocked,
       executionResult: ExecutionStatus.Blocked,
       auditRecordFinalStatus: AuditRecordFinalStatus.Blocked,
     },
     {
-      label: 'bypassed',
+      label: 'bypassed (gate cleared, execution pending)',
       result: ApprovalResultStatus.Bypassed as FinalApprovalResultStatus,
       decisionOutcome: ResponseAction.Allow,
-      riskEventStatus: RiskEventStatus.Allowed,
+      riskEventStatusAfterClosure: RiskEventStatus.Approved,
       executionResult: undefined,
       auditRecordFinalStatus: AuditRecordFinalStatus.Logged,
     },
   ])(
-    'maps $label approval outcomes into stable event and audit semantics',
-    ({ auditRecordFinalStatus, decisionOutcome, executionResult, result, riskEventStatus }) => {
+    'maps $label approval outcomes into stable post-approval semantics',
+    ({ auditRecordFinalStatus, decisionOutcome, executionResult, result, riskEventStatusAfterClosure }) => {
       const closure = resolveApprovalClosure(createRequest(), createResult(result));
 
       expect(closure.approval_request.status).toBe(result);
       expect(closure.approval_result.result).toBe(result);
       expect(closure.decision_outcome).toBe(decisionOutcome);
-      expect(closure.risk_event_status).toBe(riskEventStatus);
+      expect(closure.risk_event_status).toBe(riskEventStatusAfterClosure);
       expect(closure.execution_result).toBe(executionResult);
       expect(closure.audit_record_final_status).toBe(auditRecordFinalStatus);
     },
   );
+
+  it.each([
+    ApprovalResultStatus.Approved as FinalApprovalResultStatus,
+    ApprovalResultStatus.Bypassed as FinalApprovalResultStatus,
+  ])('treats %s as approval gate clearance, not execution completion', (result) => {
+    const closure = resolveApprovalClosure(createRequest(), createResult(result));
+
+    expect(closure.decision_outcome).toBe(ResponseAction.Allow);
+    expect(closure.risk_event_status).toBe(RiskEventStatus.Approved);
+    expect(closure.execution_result).toBeUndefined();
+    expect(closure.audit_record_final_status).toBe(AuditRecordFinalStatus.Logged);
+  });
 
   it('preserves illegal transition protection when an approval is already closed', () => {
     expect(() =>

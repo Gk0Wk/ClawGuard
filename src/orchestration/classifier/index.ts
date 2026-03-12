@@ -1,4 +1,5 @@
 export * from './build-evaluation-artifacts.js';
+export * from './apply-approval-result.js';
 export * from './rule-match.js';
 export * from './secret-rules.js';
 export * from './command-rules.js';

@@ -9,7 +9,9 @@ export interface AuditRecord {
   readonly decision_id: string;
   readonly tool_name: ToolCallRef['tool_name'];
   readonly decision: ResponseAction;
+  // undefined means the action never entered an approval phase; pending/final results track the approval gate itself.
   readonly approval_result?: ApprovalResultStatus;
+  readonly approval_result_id?: string;
   readonly execution_result?: ExecutionStatus;
   readonly timestamp: IsoTimestamp;
   readonly final_status: AuditRecordFinalStatus;

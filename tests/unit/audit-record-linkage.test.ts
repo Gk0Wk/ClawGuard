@@ -1,4 +1,4 @@
-import { buildOpenClawEvaluationArtifacts } from '../../src/index.js';
+import { ApprovalResultStatus, buildOpenClawEvaluationArtifacts } from '../../src/index.js';
 import { sprint0Fixtures } from '../fixtures/index.js';
 
 import { describe, expect, it } from 'vitest';
@@ -26,6 +26,10 @@ describe('Sprint 0 AuditRecord linkage', () => {
         event_id: artifacts.risk_event.event_id,
         reason_code: artifacts.policy_decision.reason_code,
       });
+      expect(artifacts.audit_record.approval_result).toBe(ApprovalResultStatus.Pending);
+      expect(artifacts.audit_record.approval_result_id).toBeUndefined();
+    } else {
+      expect(artifacts.audit_record.approval_result).toBeUndefined();
     }
   });
 });
