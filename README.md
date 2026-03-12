@@ -1,7 +1,7 @@
 # ClawGuard
 
 <p align="center">
-   <img src="./assets/hero-banner.svg" alt="ClawGuard hero banner" width="100%" />
+   <img src="./assets/hero-banner-en.png" alt="ClawGuard hero banner" width="100%" />
 </p>
 
 <p align="center">
@@ -11,9 +11,10 @@
 
 <p align="center">
    <a href="./README.zh-CN.md">简体中文</a> ·
+   <a href="#what-clawguard-is">What it is</a> ·
+   <a href="#the-flagship-demo">Flagship demo</a> ·
    <a href="#what-users-get">What users get</a> ·
-   <a href="#the-demo-moments-people-remember">Demo moments</a> ·
-   <a href="#when-you-know-you-need-clawguard">Why now</a>
+   <a href="#why-clawguard-why-now">Why now</a>
 </p>
 
 <p align="center">
@@ -23,26 +24,54 @@
    <img alt="human approval" src="https://img.shields.io/badge/human-final%20vote-22c55e?style=for-the-badge" />
 </p>
 
-## Why this project exists
+<p align="center">
+   <strong>OpenClaw security layer</strong> · dangerous action approval · skill scanning · secret leak prevention · audit trail
+</p>
 
-OpenClaw is powerful.
+## What ClawGuard is
 
-That is exactly why it needs a security layer.
+`ClawGuard` is a **security control layer for the OpenClaw ecosystem**.
 
-`ClawGuard` is not another OpenClaw runtime, and it is not trying to be a “smarter agent.”
-
-It is a **security control layer for the OpenClaw ecosystem**:
+It sits between OpenClaw and high-risk actions so users can:
 
 - approve dangerous actions before they execute,
 - scan risky skills before they are installed,
-- block sensitive data before it leaks out,
-- and leave an audit trail after every high-risk move.
+- block secrets before they leak out,
+- and keep an audit trail for every high-risk move.
 
-In one sentence:
+If someone lands on this page from GitHub search, the short version is:
 
-> **Let OpenClaw work — but not go rogue.**
+> **ClawGuard is the OpenClaw security layer that puts a human approval gate in front of risky actions.**
 
-## What users understand in three seconds
+## What ClawGuard is not
+
+- **Not** another OpenClaw runtime
+- **Not** just a dashboard
+- **Not** only a secret scanner
+- **Not** only a skill checker
+
+It is meant to be the thing users remember when they ask:
+
+- “How do I stop OpenClaw from doing something dangerous?”
+- “How do I make high-risk actions ask first?”
+- “How do I stop OpenClaw from leaking keys or installing sketchy skills?”
+
+## The flagship demo
+
+The first scene people should remember is simple:
+
+> **A group message tries to make the AI send money — ClawGuard blocks it before the action goes through.**
+
+That scene is the wedge.
+
+It instantly explains what this project is about:
+
+- money-risk approval,
+- dangerous action interception,
+- human-in-the-loop control,
+- and security that non-technical users can understand in seconds.
+
+## Why ClawGuard wins in three seconds
 
 The strongest security products are not the most complicated ones.
 They are the ones people understand in three seconds.
@@ -57,6 +86,26 @@ ClawGuard is built around scenarios that make non-technical users say:
 That is the whole game:
 
 > **Give AI a brake pedal. Give humans the final vote.**
+
+## Why ClawGuard, why now
+
+OpenClaw is powerful.
+
+That is exactly why it needs a security layer.
+
+OpenClaw security concerns are no longer niche engineering chatter.
+They are becoming public, obvious, and emotionally legible:
+
+- a single prompt can trigger money movement,
+- a single skill can become a supply-chain risk,
+- a single leak can expose credentials or internal documents,
+- a single vague command can produce irreversible actions.
+
+That is why the opportunity is not just to build “security tooling.”
+
+It is to own the category:
+
+> **If people think OpenClaw needs an antivirus, ClawGuard should be the first name they remember.**
 
 ## What users get
 
@@ -173,22 +222,6 @@ It is meant to feel like a reusable security model.
 
 Read the full framework here: [`docs/security-methodology.md`](./docs/security-methodology.md)
 
-## When you know you need ClawGuard
-
-OpenClaw security concerns are no longer niche engineering chatter.
-They are becoming public, obvious, and emotionally legible:
-
-- a single prompt can trigger money movement,
-- a single skill can become a supply-chain risk,
-- a single leak can expose credentials or internal documents,
-- a single vague command can produce irreversible actions.
-
-That is why the opportunity is not just to build “security tooling.”
-
-It is to own the category:
-
-> **If people think OpenClaw needs an antivirus, ClawGuard should be the first name they remember.**
-
 ## Learn more
 
 - [`README.zh-CN.md`](./README.zh-CN.md) — Simplified Chinese version
@@ -234,17 +267,25 @@ Planned visual assets include:
 - [`docs/star-strategy.md`](./docs/star-strategy.md) — launch and growth strategy
 - [`CLAUDE.md`](./CLAUDE.md) — internal project index for AI assistants
 
+## Development bootstrap
+
+The repo now has a Sprint 0 TypeScript bootstrap.
+
+- Package manager: `pnpm`
+- Type-check: `pnpm typecheck`
+- Test: `pnpm test`
+
 ## Current repo status
 
-ClawGuard is currently in the **docs-driven stage**.
+ClawGuard is currently in the **docs-first, code-bootstrap stage**.
 
 That means:
 
-- there is no runnable product code yet,
-- there are no build / test / lint commands yet,
-- and the current focus is on narrative, product shape, methodology, and launchability.
+- there is already a Sprint 0 TypeScript foundation for adapters, domain objects, and tests,
+- the repository currently uses `pnpm` for package management,
+- and the main focus is still to turn the documented model into a stable execution pipeline.
 
-The good news: that is exactly the stage where category-defining projects either become unforgettable or invisible. No pressure. Tiny amount of pressure.
+The good news: this is the stage where the project is no longer just a strong idea on paper — it has started turning into something executable. Tiny amount of pressure, slightly more code.
 
 ## The ambition
 

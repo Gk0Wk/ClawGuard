@@ -1,0 +1,17 @@
+{
+  "name": "clawguard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Sprint 0 bootstrap for the future ClawGuard Node/TypeScript integration package.",
+  "packageManager": "pnpm@10.4.1",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}

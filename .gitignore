@@ -2,4 +2,9 @@ docs/
 CLAUDE.md
 AGENTS.md
 TODO.md
-openclaw/
+/openclaw/
+node_modules/
+coverage/
+copilot-instructions.md
+.pnpm-store/
+package-lock.json
