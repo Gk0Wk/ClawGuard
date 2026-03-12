@@ -174,14 +174,16 @@ function normalizeWorkspaceContext(
     return undefined;
   }
 
-  const candidatePaths = [
+  const patchText = firstString(toolParams, ['patch', 'patchText']);
+  const candidatePaths = dedupeStrings([
     firstString(toolParams, ['path', 'filePath']),
     ...readStringArray(toolParams.paths),
-  ].filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index);
+    ...extractPatchPaths(patchText),
+  ]);
 
   return {
     paths: candidatePaths,
-    summary: firstString(toolParams, ['patch', 'content']),
+    summary: firstString(toolParams, ['patch', 'patchText', 'content']),
   };
 }
 
@@ -232,12 +234,12 @@ export function normalizeToolStatus(agentEvent: OpenClawAgentEventInput | undefi
 }
 
 function collectRawTextCandidates(toolParams: Record<string, unknown>): string[] {
-  return [
+  return dedupeStrings([
     firstString(toolParams, ['command', 'text', 'message', 'content', 'patch']),
     ...Object.values(toolParams)
       .map((value) => normalizeOptionalString(value))
       .filter((value): value is string => Boolean(value)),
-  ].filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index);
+  ]);
 }
 
 function firstString(source: Record<string, unknown>, keys: readonly string[]): string | undefined {
@@ -266,6 +268,114 @@ function readStringArray(value: unknown): string[] {
   return value
     .map((entry) => normalizeOptionalString(entry))
     .filter((entry): entry is string => Boolean(entry));
+}
+
+function extractPatchPaths(patchText: string | undefined): string[] {
+  if (!patchText) {
+    return [];
+  }
+
+  const extractedPaths: string[] = [];
+  const lines = patchText.split(/\r?\n/u);
+
+  for (const line of lines) {
+    const applyPatchHeaderMatch = line.match(/^\*\*\* (?:Update|Add|Delete) File:\s+(.+)$/u);
+    if (applyPatchHeaderMatch) {
+      const path = normalizePatchPath(applyPatchHeaderMatch[1]);
+      if (path) {
+        extractedPaths.push(path);
+      }
+      continue;
+    }
+
+    const diffHeaderMatch = line.match(/^diff --git\s+a\/(.+?)\s+b\/(.+)$/u);
+    if (diffHeaderMatch) {
+      const fromPath = normalizeDiffPath(diffHeaderMatch[1], 'a');
+      const toPath = normalizeDiffPath(diffHeaderMatch[2], 'b');
+      if (fromPath) {
+        extractedPaths.push(fromPath);
+      }
+      if (toPath) {
+        extractedPaths.push(toPath);
+      }
+      continue;
+    }
+
+    const diffFileHeaderMatch = line.match(/^(---|\+\+\+)\s+(.+)$/u);
+    if (diffFileHeaderMatch) {
+      const side = diffFileHeaderMatch[1] === '---' ? 'a' : 'b';
+      const path = normalizeDiffPath(diffFileHeaderMatch[2], side);
+      if (path) {
+        extractedPaths.push(path);
+      }
+      continue;
+    }
+
+    const renameHeaderMatch = line.match(/^rename (?:from|to)\s+(.+)$/u);
+    if (renameHeaderMatch) {
+      const path = normalizePatchPath(renameHeaderMatch[1]);
+      if (path) {
+        extractedPaths.push(path);
+      }
+    }
+  }
+
+  return dedupeStrings(extractedPaths);
+}
+
+function normalizeDiffPath(rawPath: string, side: 'a' | 'b'): string | undefined {
+  const withoutMetadata = rawPath.split('\t')[0] ?? rawPath;
+  let normalized = normalizePatchPath(withoutMetadata);
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized === '/dev/null') {
+    return undefined;
+  }
+
+  const sidePrefix = `${side}/`;
+  if (normalized.startsWith(sidePrefix)) {
+    normalized = normalized.slice(sidePrefix.length).trim();
+  }
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizePatchPath(rawPath: string): string | undefined {
+  const normalized = normalizeOptionalString(rawPath);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const unquoted =
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+      ? normalized.slice(1, -1).trim()
+      : normalized;
+
+  return unquoted.length > 0 ? unquoted : undefined;
+}
+
+function dedupeStrings(values: readonly (string | undefined)[]): string[] {
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    if (!value) {
+      continue;
+    }
+
+    if (seen.has(value)) {
+      continue;
+    }
+
+    seen.add(value);
+    deduped.push(value);
+  }
+
+  return deduped;
 }
 
 function normalizeToolName(value: string): string {

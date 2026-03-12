@@ -10,6 +10,7 @@ import {
 
 export interface RiskEvent {
   readonly event_id: string;
+  readonly decision_id: string;
   readonly event_type: RiskEventType;
   readonly risk_domain: RiskDomain;
   readonly trigger_source: RiskTriggerSource;

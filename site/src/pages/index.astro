@@ -1,0 +1,355 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const concerns = [
+  {
+    title: '发钱之前，先问你',
+    description: '别让一句话就把 AI 推去发红包、转账或付款。'
+  },
+  {
+    title: '装 skill 之前，先体检',
+    description: '别把一个看起来正常的 skill，直接装进自己的工作流。'
+  },
+  {
+    title: '敏感信息，不该外发',
+    description: 'API key、Token、私钥和内部文档，本来就不该离开你的机器。'
+  },
+  {
+    title: '删文件这种事，也该先确认',
+    description: '真正让人安心的，不是 AI 更激进，而是关键动作有人能踩刹车。'
+  }
+];
+
+const promises = [
+  {
+    eyebrow: 'Confirm',
+    title: '危险动作先确认',
+    description: '转账、删文件、跑 shell、改配置——先问你，再执行。'
+  },
+  {
+    eyebrow: 'Scan',
+    title: 'skills 安装先体检',
+    description: '安装前先看权限、来源和潜在风险。'
+  },
+  {
+    eyebrow: 'Protect',
+    title: '敏感信息外发前拦下',
+    description: '在 key、token、私钥和内部文档往外走之前，把它挡在门口。'
+  },
+  {
+    eyebrow: 'Prove',
+    title: '关键风险全程留痕',
+    description: '为什么被拦、为什么要确认、到底发生了什么，都能查到。'
+  }
+];
+
+const scenes = [
+  {
+    title: '群聊红包 / 转账诱导',
+    description: 'AI 本来想把钱发出去，但在动作执行前被拦住。'
+  },
+  {
+    title: '可疑 skill 安装',
+    description: '看起来正常的 skill，在安装前先做风险体检。'
+  },
+  {
+    title: 'API key / 文档外发',
+    description: '敏感信息还没离开机器，就已经先被挡下。'
+  }
+];
+
+const steps = [
+  '先识别这是不是高风险动作',
+  '该确认的动作先让你点头',
+  '该拦住的泄密和越权直接挡下',
+  '最后把来龙去脉留痕记录'
+];
+
+const faqs = [
+  {
+    question: 'ClawGuard 是什么？',
+    answer:
+      'ClawGuard 是 OpenClaw 的安全卫士。它会在危险动作前先确认、在可疑 skills 安装前先扫描、在密钥和敏感信息外发前先拦截，并把关键风险动作留下记录。'
+  },
+  {
+    question: 'ClawGuard 和 OpenClaw 本身是什么关系？',
+    answer:
+      'ClawGuard 不是另一个 OpenClaw，也不是替代版 agent。它是叠加在 OpenClaw 之上的安全层，专门负责危险动作确认、skills 风险扫描、泄密拦截和风险留痕。'
+  },
+  {
+    question: '小白用户为什么会需要 ClawGuard？',
+    answer:
+      '因为普通用户不一定懂安全术语，但一定能理解“AI 差点把钱发出去”“AI 差点把 key 发出去”“AI 想删文件却没先问我”这类风险。ClawGuard 把这些风险变成看得见、拦得住、解释得清的产品体验。'
+  },
+  {
+    question: 'ClawGuard 现在优先解决哪些问题？',
+    answer:
+      '第一优先级是危险动作确认、可疑 skills 扫描、secret leak prevention 和风险体检/安全评分。这几项最容易让非技术用户一眼理解产品价值。'
+  }
+];
+
+const structuredData = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'ClawGuard',
+    url: 'https://clawguard.top',
+    description: 'ClawGuard is the OpenClaw security layer: approve dangerous actions, scan skills, block secret leaks, and keep humans in control.'
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'ClawGuard',
+    applicationCategory: 'SecurityApplication',
+    operatingSystem: 'Web',
+    url: 'https://clawguard.top',
+    description: 'The antivirus for OpenClaw — approve dangerous actions, scan skills, block secret leaks, and put humans back in control.',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD'
+    }
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  }
+];
+---
+
+<BaseLayout
+  title="ClawGuard — The antivirus for OpenClaw"
+  description="ClawGuard（龙虾卫士）是 OpenClaw 的安全卫士：拦危险动作、查 skills、堵泄密、把最后一票还给人。"
+  keywords={[
+    'ClawGuard',
+    '龙虾卫士',
+    'OpenClaw 安全',
+    'OpenClaw security',
+    '危险动作审批',
+    'secret leak prevention',
+    'skills 扫描',
+    'OpenClaw antivirus'
+  ]}
+  structuredData={structuredData}
+>
+  <main class="page-shell">
+    <section class="hero container">
+      <nav class="topbar">
+        <a class="brand" href="#top">ClawGuard</a>
+        <div class="topbar-links">
+          <a href="#product">产品</a>
+          <a href="#demo">Demo</a>
+          <a href="/updates/">更新</a>
+          <a href="https://github.com/Gk0Wk/ClawGuard" target="_blank" rel="noreferrer noopener">GitHub</a>
+        </div>
+      </nav>
+
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow-pill">OPENCLAW SECURITY LAYER</div>
+          <h1>
+            <span class="hero-line">[龙虾] 很能干</span>
+            <span class="hero-line">但危险动作 先问你</span>
+          </h1>
+          <p class="hero-lead">
+            <span>The antivirus for OpenClaw.</span>
+            转账、删文件、装 skill、外发敏感信息，都先过 ClawGuard 这一道门。让 OpenClaw 放手去做事，也把最后一票留在你手里。
+          </p>
+
+          <div class="hero-signal-row">
+            <span>转账前确认</span>
+            <span>安装前扫描</span>
+            <span>外发前拦截</span>
+          </div>
+
+          <div class="cta-row">
+            <a class="button primary" href="#demo">看 30 秒 Demo</a>
+            <a class="button secondary" href="https://github.com/Gk0Wk/ClawGuard" target="_blank" rel="noreferrer noopener">去 GitHub 看项目</a>
+          </div>
+
+          <p class="hero-footnote">给 OpenClaw 一道保险，也把最后一票还给人。</p>
+        </div>
+
+        <div class="hero-panel" aria-label="ClawGuard product preview">
+          <div class="preview-card critical preview-card-lg">
+            <div class="preview-window-bar">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="preview-card-header">
+              <div class="preview-bar"></div>
+              <div class="preview-label">高风险动作已拦截</div>
+            </div>
+            <h3>群聊诱导 AI 发红包 / 转账</h3>
+            <p>命中提示注入 + 支付请求，动作没有发出去，而是先被 ClawGuard 拦下。</p>
+            <dl class="preview-detail-list">
+              <div>
+                <dt>动作</dt>
+                <dd>发送红包 / 转账</dd>
+              </div>
+              <div>
+                <dt>来源</dt>
+                <dd>群聊消息 + 提示注入</dd>
+              </div>
+              <div>
+                <dt>处置</dt>
+                <dd>已拦截，等待人工确认</dd>
+              </div>
+            </dl>
+            <div class="preview-action-row">
+              <span class="preview-action danger">Blocked</span>
+              <span class="preview-action ghost">需人工确认</span>
+            </div>
+          </div>
+
+          <div class="preview-subgrid">
+            <div class="preview-card info">
+              <div class="preview-bar"></div>
+              <div class="preview-label">skills 安装前扫描</div>
+              <h3>发现凭证读取</h3>
+              <p>可疑 skill 在安装前先暴露风险。</p>
+            </div>
+
+            <div class="preview-card score compact">
+              <div class="preview-bar"></div>
+              <div class="preview-label">安全评分</div>
+              <div class="score-value">58 / 100</div>
+              <p>高风险项一眼看见。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="trust-strip container">
+      <div>关键动作先确认</div>
+      <div>可疑安装先扫描</div>
+      <div>敏感外发先拦截</div>
+      <div>风险过程可追溯</div>
+    </section>
+
+    <section class="section container" id="why">
+      <div class="section-intro">
+        <span class="section-tag">你真正担心的，大概就是这些</span>
+        <h2>不是 AI 不够强，而是它太快、太听话、太容易把错事做成。</h2>
+        <p>
+          当 AI 开始能发钱、装 skills、发消息、改文件，风险就不再是抽象词，而是“它会不会真的给我惹祸”。
+        </p>
+      </div>
+      <div class="pain-grid">
+        {concerns.map((pain) => (
+          <article class="pain-card">
+            <h3>{pain.title}</h3>
+            <p>{pain.description}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="section container" id="demo">
+      <div class="demo-panel">
+        <div>
+          <span class="section-tag">最值得一看的 Demo</span>
+          <h2>群聊里有人诱导 AI 发红包 / 转账，ClawGuard 在动作发生前把它拦住。</h2>
+          <p>
+            这就是 ClawGuard 最容易被理解的价值：高风险动作不会直接冲出去，而是先过一道确认门。你不需要先理解底层架构，只需要看到它确实把危险动作拦住了。
+          </p>
+        </div>
+        <ol class="step-list">
+          {steps.map((step) => <li>{step}</li>)}
+        </ol>
+      </div>
+    </section>
+
+    <section class="section container" id="product">
+      <div class="section-intro">
+        <span class="section-tag">ClawGuard 会在关键时刻做四件事</span>
+        <h2>不用你学一套安全体系，也能立刻感受到“它在替我挡风险”。</h2>
+      </div>
+      <div class="capability-grid">
+        {promises.map((capability) => (
+          <article class="capability-card">
+            <div class="capability-eyebrow">{capability.eyebrow}</div>
+            <h3>{capability.title}</h3>
+            <p>{capability.description}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="section container">
+      <div class="compare-panel scene-panel">
+        <div>
+          <span class="section-tag">你会最先记住的几个场景</span>
+          <h2>这些不是功能列表，而是别人一听就知道它有用的瞬间。</h2>
+        </div>
+        <div class="inline-link-grid">
+          {scenes.map((scene) => (
+            <article class="inline-link-card">
+              <strong>{scene.title}</strong>
+              <span>{scene.description}</span>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="section container">
+      <div class="compare-panel">
+        <div>
+          <span class="section-tag">有它和没它的区别</span>
+          <h2>不是再多一个面板，而是在关键时刻真的能把你拉住。</h2>
+        </div>
+        <div class="compare-grid">
+          <div class="compare-card bad">
+            <h3>没有 ClawGuard</h3>
+            <p>危险动作直接执行、skill 安装缺少扫描、泄密往往等到事情已经发生了才发现。</p>
+          </div>
+          <div class="compare-card good">
+            <h3>有了 ClawGuard</h3>
+            <p>该确认的先确认，该阻断的直接阻断，该解释的留痕可查，你能清楚知道系统在替自己挡风险。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container faq-section" id="faq">
+      <div class="section-intro">
+        <span class="section-tag">常见问题</span>
+        <h2>第一次认识 ClawGuard，最常会问的几个问题。</h2>
+        <p>
+          想先快速判断它是不是你要找的，可以先看这三件事：它是什么、它和 OpenClaw 的关系、它现在最擅长挡什么风险。
+        </p>
+      </div>
+      <div class="faq-list">
+        {faqs.map((faq) => (
+          <article class="faq-item">
+            <h3>{faq.question}</h3>
+            <p>{faq.answer}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="section container">
+      <div class="final-cta">
+        <span class="section-tag">现在开始</span>
+        <h2>如果你已经觉得 OpenClaw 很能干，那现在就该给它加一道保险。</h2>
+        <p>
+          先从最容易出事的地方开始：危险动作确认、skills 扫描、secret 泄露阻断，以及清楚可查的风险记录。
+        </p>
+        <div class="cta-row center">
+          <a class="button primary" href="https://github.com/Gk0Wk/ClawGuard" target="_blank" rel="noreferrer noopener">Star on GitHub</a>
+          <a class="button secondary" href="/updates/">查看最新进展</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

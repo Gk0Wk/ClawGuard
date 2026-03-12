@@ -1,0 +1,16 @@
+{
+  "name": "clawguard-site",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.4.1",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.3.0",
+    "astro": "^5.5.0"
+  }
+}

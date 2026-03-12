@@ -1,29 +1,45 @@
 import type { EvaluationInput } from '../../domain/context/index.js';
+import type { ApprovalRequest } from '../../domain/approval/index.js';
 import type { AuditRecord } from '../../domain/audit/index.js';
 import type { PolicyDecision } from '../../domain/policy/index.js';
 import type { RiskEvent } from '../../domain/risk/index.js';
 import {
-  AuditRecordFinalStatus,
-  ExecutionStatus,
+  ApprovalCategory,
+  PolicyDecisionReasonCode,
   ResponseAction,
-  RiskDomain,
-  RiskEventStatus,
-  RiskEventType,
-  RiskSeverity,
   RiskTriggerSource,
-  ToolStatus,
 } from '../../domain/shared/index.js';
 import { createStableId, systemClock, type RuntimeClock } from '../../shared/index.js';
 import type { NormalizeOpenClawInputsArgs } from '../../adapters/openclaw/normalization.js';
 import { normalizeOpenClawInputs } from '../../adapters/openclaw/normalization.js';
+import { createApprovalRequest } from '../../domain/approval/index.js';
+import type { FastPathRuleMatch } from './rule-match.js';
+import { PipelineKind, classifyToolRouting, type ToolRoutingMetadata } from './routing.js';
+import {
+  buildRuleMatchesForRouting,
+  mapDecisionToSeverity,
+  mapExecutionResultToFinalStatus,
+  mapToolStatusToExecutionResult,
+  resolveRiskEventStatus,
+  selectPrimaryRuleMatch,
+} from './evaluation-outcomes.js';
+import {
+  buildApprovalActionTitle,
+  buildApprovalImpactScope,
+  buildExplanation,
+  buildSummary,
+} from './evaluation-presentation.js';
 
 export interface EvaluationArtifacts {
   readonly evaluation_input: EvaluationInput;
   readonly session_ref: EvaluationInput['session_ref'];
   readonly run_ref: EvaluationInput['run_ref'];
   readonly tool_call_ref: EvaluationInput['tool_call_ref'];
+  readonly routing: ToolRoutingMetadata;
+  readonly rule_matches: readonly FastPathRuleMatch[];
   readonly risk_event: RiskEvent;
   readonly policy_decision: PolicyDecision;
+  readonly approval_request?: ApprovalRequest;
   readonly audit_record: AuditRecord;
 }
 
@@ -32,8 +48,11 @@ export interface BuildEvaluationArtifactsArgs extends NormalizeOpenClawInputsArg
 export function buildOpenClawEvaluationArtifacts(args: BuildEvaluationArtifactsArgs): EvaluationArtifacts {
   const clock = args.clock ?? systemClock;
   const normalized = normalizeOpenClawInputs(args);
-  const policy_decision = buildPolicyDecision(normalized.evaluation_input);
-  const risk_event = buildRiskEvent(normalized.evaluation_input, policy_decision);
+  const routing = classifyToolRouting(normalized.evaluation_input.tool_name);
+  const rule_matches = buildRuleMatchesForRouting(normalized.evaluation_input, routing);
+  const policy_decision = buildPolicyDecision(normalized.evaluation_input, routing, rule_matches);
+  const risk_event = buildRiskEvent(normalized.evaluation_input, routing, policy_decision, rule_matches);
+  const approval_request = buildApprovalRequest(normalized.evaluation_input, routing, risk_event, policy_decision, clock);
   const audit_record = buildAuditRecord(normalized.evaluation_input, risk_event, policy_decision, clock);
 
   return {
@@ -41,19 +60,25 @@ export function buildOpenClawEvaluationArtifacts(args: BuildEvaluationArtifactsA
     session_ref: normalized.session_ref,
     run_ref: normalized.run_ref,
     tool_call_ref: normalized.tool_call_ref,
+    routing,
+    rule_matches,
     risk_event,
     policy_decision,
+    approval_request,
     audit_record,
   };
 }
 
-function buildPolicyDecision(evaluationInput: EvaluationInput): PolicyDecision {
-  const eventType = mapToolToEventType(evaluationInput.tool_name);
-
-  if (eventType === RiskEventType.Outbound && evaluationInput.session_ref.send_policy === 'deny') {
+function buildPolicyDecision(
+  evaluationInput: EvaluationInput,
+  routing: ToolRoutingMetadata,
+  ruleMatches: readonly FastPathRuleMatch[],
+): PolicyDecision {
+  if (routing.pipeline_kind === PipelineKind.Outbound && evaluationInput.session_ref.send_policy === 'deny') {
     return {
       decision_id: createStableId('decision', evaluationInput.run_ref.run_id, evaluationInput.tool_call_ref.tool_call_id),
       decision: ResponseAction.Block,
+      reason_code: PolicyDecisionReasonCode.SessionSendPolicy,
       reason: 'Session send policy denies outbound delivery.',
       requires_approval: false,
       block_immediately: true,
@@ -62,10 +87,25 @@ function buildPolicyDecision(evaluationInput: EvaluationInput): PolicyDecision {
     };
   }
 
-  if (eventType === RiskEventType.Exec && evaluationInput.session_ref.exec_ask) {
+  const primaryMatch = selectPrimaryRuleMatch(ruleMatches);
+  if (primaryMatch) {
+    return {
+      decision_id: createStableId('decision', evaluationInput.run_ref.run_id, evaluationInput.tool_call_ref.tool_call_id),
+      decision: primaryMatch.recommended_action,
+      reason_code: mapRuleMatchToReasonCode(primaryMatch),
+      reason: primaryMatch.reason,
+      requires_approval: primaryMatch.recommended_action === ResponseAction.ApproveRequired,
+      block_immediately: primaryMatch.recommended_action === ResponseAction.Block,
+      can_continue: primaryMatch.recommended_action === ResponseAction.Allow,
+      can_remember: primaryMatch.recommended_action === ResponseAction.ApproveRequired,
+    };
+  }
+
+  if (routing.pipeline_kind === PipelineKind.Exec && evaluationInput.session_ref.exec_ask) {
     return {
       decision_id: createStableId('decision', evaluationInput.run_ref.run_id, evaluationInput.tool_call_ref.tool_call_id),
       decision: ResponseAction.ApproveRequired,
+      reason_code: PolicyDecisionReasonCode.SessionExecPolicy,
       reason: 'Session exec policy requires approval before execution.',
       requires_approval: true,
       block_immediately: false,
@@ -77,6 +117,7 @@ function buildPolicyDecision(evaluationInput: EvaluationInput): PolicyDecision {
   return {
     decision_id: createStableId('decision', evaluationInput.run_ref.run_id, evaluationInput.tool_call_ref.tool_call_id),
     decision: ResponseAction.Allow,
+    reason_code: PolicyDecisionReasonCode.DefaultAllow,
     reason: 'No blocking or approval-only session policy matched this tool call.',
     requires_approval: false,
     block_immediately: false,
@@ -85,24 +126,59 @@ function buildPolicyDecision(evaluationInput: EvaluationInput): PolicyDecision {
   };
 }
 
-function buildRiskEvent(evaluationInput: EvaluationInput, policyDecision: PolicyDecision): RiskEvent {
-  const event_type = mapToolToEventType(evaluationInput.tool_name);
-  const risk_domain = mapToolToRiskDomain(event_type);
+function buildRiskEvent(
+  evaluationInput: EvaluationInput,
+  routing: ToolRoutingMetadata,
+  policyDecision: PolicyDecision,
+  ruleMatches: readonly FastPathRuleMatch[],
+): RiskEvent {
+  const primaryMatch = selectPrimaryRuleMatch(ruleMatches);
 
   return {
     event_id: createStableId('event', evaluationInput.run_ref.run_id, evaluationInput.tool_call_ref.tool_call_id),
-    event_type,
-    risk_domain,
+    decision_id: policyDecision.decision_id,
+    event_type: routing.event_type,
+    risk_domain: routing.risk_domain,
     trigger_source: RiskTriggerSource.BeforeToolCall,
-    summary: buildSummary(evaluationInput, policyDecision),
-    explanation: buildExplanation(evaluationInput, policyDecision),
-    severity: mapDecisionToSeverity(policyDecision.decision),
+    summary: buildSummary(evaluationInput, policyDecision, primaryMatch),
+    explanation: buildExplanation(evaluationInput, policyDecision, primaryMatch, ruleMatches),
+    severity: primaryMatch?.severity ?? mapDecisionToSeverity(policyDecision.decision),
     recommended_action: policyDecision.decision,
     status: resolveRiskEventStatus(policyDecision.decision, evaluationInput.tool_call_ref.tool_status),
     session_ref: evaluationInput.session_ref,
     run_ref: evaluationInput.run_ref,
     tool_call_ref: evaluationInput.tool_call_ref,
   };
+}
+
+function buildApprovalRequest(
+  evaluationInput: EvaluationInput,
+  routing: ToolRoutingMetadata,
+  riskEvent: RiskEvent,
+  policyDecision: PolicyDecision,
+  clock: RuntimeClock,
+): ApprovalRequest | undefined {
+  if (!policyDecision.requires_approval) {
+    return undefined;
+  }
+
+  const requestedAt = evaluationInput.agent_event?.timestamp ?? evaluationInput.run_ref.started_at ?? clock.now();
+
+  return createApprovalRequest({
+    approval_request_id: createStableId('approval', riskEvent.event_id, policyDecision.decision_id),
+    event_id: riskEvent.event_id,
+    decision_id: policyDecision.decision_id,
+    approval_category: mapPipelineKindToApprovalCategory(routing),
+    action_title: buildApprovalActionTitle(evaluationInput),
+    reason_code: policyDecision.reason_code,
+    reason_summary: policyDecision.reason,
+    risk_level: riskEvent.severity,
+    impact_scope: buildApprovalImpactScope(evaluationInput),
+    requested_at: requestedAt,
+    session_ref: evaluationInput.session_ref,
+    run_ref: evaluationInput.run_ref,
+    tool_call_ref: evaluationInput.tool_call_ref,
+  });
 }
 
 function buildAuditRecord(
@@ -128,115 +204,30 @@ function buildAuditRecord(
   };
 }
 
-function mapToolToEventType(toolName: string): RiskEventType {
-  if (toolName === 'exec') {
-    return RiskEventType.Exec;
-  }
-
-  if (toolName === 'message' || toolName === 'sessions_send') {
-    return RiskEventType.Outbound;
-  }
-
-  if (toolName === 'write' || toolName === 'apply_patch') {
-    return RiskEventType.WorkspaceMutation;
-  }
-
-  return RiskEventType.Exec;
-}
-
-function mapToolToRiskDomain(eventType: RiskEventType): RiskDomain {
-  switch (eventType) {
-    case RiskEventType.Outbound:
-      return RiskDomain.DataPrivacy;
-    case RiskEventType.WorkspaceMutation:
-    case RiskEventType.Exec:
+function mapRuleMatchToReasonCode(ruleMatch: FastPathRuleMatch): PolicyDecisionReasonCode {
+  switch (ruleMatch.kind) {
+    case 'fastpath.command':
+      return PolicyDecisionReasonCode.FastPathCommand;
+    case 'fastpath.path':
+      return PolicyDecisionReasonCode.FastPathPath;
+    case 'fastpath.secret':
+      return PolicyDecisionReasonCode.FastPathSecret;
+    case 'fastpath.destination':
+      return PolicyDecisionReasonCode.FastPathDestination;
     default:
-      return RiskDomain.Execution;
+      return PolicyDecisionReasonCode.DefaultAllow;
   }
 }
 
-function mapDecisionToSeverity(decision: ResponseAction): RiskSeverity {
-  switch (decision) {
-    case ResponseAction.Block:
-      return RiskSeverity.High;
-    case ResponseAction.ApproveRequired:
-    case ResponseAction.Constrain:
-      return RiskSeverity.Medium;
-    case ResponseAction.Warn:
-      return RiskSeverity.Medium;
-    case ResponseAction.Allow:
+function mapPipelineKindToApprovalCategory(routing: ToolRoutingMetadata): ApprovalCategory {
+  switch (routing.pipeline_kind) {
+    case PipelineKind.Exec:
+      return ApprovalCategory.Exec;
+    case PipelineKind.Outbound:
+      return ApprovalCategory.Outbound;
+    case PipelineKind.WorkspaceMutation:
+      return ApprovalCategory.WorkspaceMutation;
     default:
-      return RiskSeverity.Low;
+      return ApprovalCategory.Generic;
   }
-}
-
-function resolveRiskEventStatus(decision: ResponseAction, toolStatus: ToolStatus): RiskEventStatus {
-  if (toolStatus === ToolStatus.Blocked || decision === ResponseAction.Block) {
-    return RiskEventStatus.Blocked;
-  }
-
-  if (toolStatus === ToolStatus.Failed) {
-    return RiskEventStatus.Failed;
-  }
-
-  if (decision === ResponseAction.ApproveRequired) {
-    return RiskEventStatus.PendingApproval;
-  }
-
-  if (toolStatus === ToolStatus.Completed) {
-    return RiskEventStatus.Allowed;
-  }
-
-  return RiskEventStatus.Detected;
-}
-
-function mapToolStatusToExecutionResult(
-  toolStatus: ToolStatus,
-  decision: ResponseAction,
-): ExecutionStatus | undefined {
-  if (toolStatus === ToolStatus.Blocked || decision === ResponseAction.Block) {
-    return ExecutionStatus.Blocked;
-  }
-
-  if (toolStatus === ToolStatus.Failed) {
-    return ExecutionStatus.Failed;
-  }
-
-  if (decision === ResponseAction.Constrain) {
-    return ExecutionStatus.Constrained;
-  }
-
-  if (toolStatus === ToolStatus.Completed) {
-    return ExecutionStatus.Allowed;
-  }
-
-  return undefined;
-}
-
-function mapExecutionResultToFinalStatus(
-  executionResult: ExecutionStatus | undefined,
-  decision: ResponseAction,
-): AuditRecordFinalStatus {
-  switch (executionResult) {
-    case ExecutionStatus.Allowed:
-      return AuditRecordFinalStatus.Allowed;
-    case ExecutionStatus.Blocked:
-      return AuditRecordFinalStatus.Blocked;
-    case ExecutionStatus.Constrained:
-      return AuditRecordFinalStatus.Constrained;
-    case ExecutionStatus.Failed:
-      return AuditRecordFinalStatus.Failed;
-    default:
-      return decision === ResponseAction.Block ? AuditRecordFinalStatus.Blocked : AuditRecordFinalStatus.Logged;
-  }
-}
-
-function buildSummary(evaluationInput: EvaluationInput, policyDecision: PolicyDecision): string {
-  const destination = evaluationInput.destination?.target ? ` to ${evaluationInput.destination.target}` : '';
-  return `${evaluationInput.tool_name} call${destination} evaluated as ${policyDecision.decision}.`;
-}
-
-function buildExplanation(evaluationInput: EvaluationInput, policyDecision: PolicyDecision): string {
-  const origin = evaluationInput.origin?.channel ? ` Origin=${evaluationInput.origin.channel}.` : '';
-  return `${policyDecision.reason}${origin}`;
 }

@@ -6,6 +6,9 @@
   "packageManager": "pnpm@10.4.1",
   "type": "module",
   "scripts": {
+    "site:dev": "pnpm --dir site dev",
+    "site:build": "pnpm --dir site build",
+    "site:preview": "pnpm --dir site preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

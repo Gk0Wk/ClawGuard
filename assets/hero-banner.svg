@@ -1,0 +1,173 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="bg" x1="84" y1="58" x2="1497" y2="866" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#041325" />
+            <stop offset="0.44" stop-color="#121F41" />
+            <stop offset="1" stop-color="#1A0D44" />
+        </linearGradient>
+        <radialGradient id="cyanGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+            gradientTransform="translate(304 204) rotate(44.3) scale(419 282)">
+            <stop stop-color="#20E0FF" stop-opacity="0.34" />
+            <stop offset="1" stop-color="#20E0FF" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="violetGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+            gradientTransform="translate(1184 170) rotate(72.9) scale(386 275)">
+            <stop stop-color="#7A62FF" stop-opacity="0.34" />
+            <stop offset="1" stop-color="#7A62FF" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="pinkGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+            gradientTransform="translate(1194 702) rotate(90) scale(296 356)">
+            <stop stop-color="#FF4FA2" stop-opacity="0.32" />
+            <stop offset="1" stop-color="#FF4FA2" stop-opacity="0" />
+        </radialGradient>
+        <linearGradient id="frame" x1="92" y1="88" x2="1510" y2="822" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#FFFFFF" stop-opacity="0.12" />
+            <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.04" />
+        </linearGradient>
+        <linearGradient id="panel" x1="118" y1="112" x2="1440" y2="768" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#10253B" stop-opacity="0.88" />
+            <stop offset="0.48" stop-color="#16264A" stop-opacity="0.74" />
+            <stop offset="1" stop-color="#2A1F56" stop-opacity="0.72" />
+        </linearGradient>
+        <linearGradient id="panelStroke" x1="126" y1="112" x2="1462" y2="790" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#A9EFFF" stop-opacity="0.16" />
+            <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.06" />
+            <stop offset="1" stop-color="#FF7AB8" stop-opacity="0.12" />
+        </linearGradient>
+        <linearGradient id="wordmark" x1="130" y1="220" x2="696" y2="308" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#FFFFFF" />
+            <stop offset="1" stop-color="#EAF1FF" />
+        </linearGradient>
+        <linearGradient id="score" x1="998" y1="610" x2="1298" y2="610" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#A45DFF" />
+            <stop offset="0.55" stop-color="#F04EBE" />
+            <stop offset="1" stop-color="#FF789C" />
+        </linearGradient>
+        <filter id="softBlur" x="-100" y="-100" width="1800" height="1100" filterUnits="userSpaceOnUse"
+            color-interpolation-filters="sRGB">
+            <feGaussianBlur stdDeviation="60" />
+        </filter>
+        <filter id="cardShadow" x="780" y="90" width="620" height="700" filterUnits="userSpaceOnUse"
+            color-interpolation-filters="sRGB">
+            <feOffset dy="20" />
+            <feGaussianBlur stdDeviation="22" />
+            <feColorMatrix type="matrix" values="0 0 0 0 0.008 0 0 0 0 0.027 0 0 0 0 0.078 0 0 0 0.42 0" />
+            <feBlend in="SourceGraphic" in2="BackgroundImageFix" mode="normal" />
+        </filter>
+        <filter id="titleShadow" x="92" y="175" width="594" height="136" filterUnits="userSpaceOnUse"
+            color-interpolation-filters="sRGB">
+            <feOffset dy="8" />
+            <feGaussianBlur stdDeviation="8" />
+            <feColorMatrix type="matrix" values="0 0 0 0 0.01 0 0 0 0 0.03 0 0 0 0 0.10 0 0 0 0.3 0" />
+            <feBlend in="SourceGraphic" in2="BackgroundImageFix" mode="normal" />
+        </filter>
+    </defs>
+
+    <rect width="1600" height="900" rx="36" fill="url(#bg)" />
+    <g filter="url(#softBlur)">
+        <ellipse cx="300" cy="190" rx="256" ry="184" fill="url(#cyanGlow)" />
+        <ellipse cx="1184" cy="170" rx="248" ry="178" fill="url(#violetGlow)" />
+        <ellipse cx="1188" cy="706" rx="294" ry="226" fill="url(#pinkGlow)" />
+    </g>
+
+    <rect x="88" y="86" width="1424" height="728" rx="30" fill="url(#panel)" stroke="url(#frame)" stroke-width="2" />
+    <rect x="104" y="102" width="1392" height="696" rx="26" fill="none" stroke="url(#panelStroke)" stroke-width="1.5" />
+
+    <g opacity="0.2">
+        <path d="M860 118H1460" stroke="#C7D6FF" stroke-width="1" />
+        <path d="M860 258H1460" stroke="#C7D6FF" stroke-width="1" />
+        <path d="M860 398H1460" stroke="#C7D6FF" stroke-width="1" />
+        <path d="M860 538H1460" stroke="#C7D6FF" stroke-width="1" />
+        <path d="M860 678H1460" stroke="#C7D6FF" stroke-width="1" />
+    </g>
+
+    <g>
+        <rect x="124" y="126" width="236" height="52" rx="26" fill="#A3EEFF" fill-opacity="0.1" stroke="#96E7FF"
+            stroke-opacity="0.2" />
+        <circle cx="154" cy="152" r="8" fill="#9DEEFF" />
+        <text x="176" y="160" fill="#9EEBFF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="28"
+            font-weight="800">OPENCLAW SECURITY</text>
+    </g>
+
+    <g filter="url(#titleShadow)">
+        <text x="126" y="296" fill="url(#wordmark)" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="110"
+            font-weight="800" letter-spacing="-1.5">ClawGuard</text>
+    </g>
+
+    <text x="126" y="374" fill="#B9C8F5" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="46"
+        font-weight="650">The antivirus for OpenClaw</text>
+
+    <text x="126" y="468" fill="#E7EDFF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="31"
+        font-weight="600">Blocks dangerous actions, scans skills, stops secret leaks,</text>
+    <text x="126" y="514" fill="#E7EDFF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="31"
+        font-weight="600">and puts humans back in control.</text>
+
+    <g>
+        <rect x="126" y="584" width="200" height="62" rx="31" fill="#0C506E" fill-opacity="0.34" stroke="#26D8FF"
+            stroke-opacity="0.45" stroke-width="2" />
+        <text x="163" y="624" fill="#B3F5FF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="26"
+            font-weight="800">Approve</text>
+
+        <rect x="344" y="584" width="182" height="62" rx="31" fill="#342B75" fill-opacity="0.45" stroke="#7F6CFF"
+            stroke-opacity="0.44" stroke-width="2" />
+        <text x="377" y="624" fill="#D9D3FF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="26"
+            font-weight="800">Protect</text>
+
+        <rect x="544" y="584" width="198" height="62" rx="31" fill="#572548" fill-opacity="0.42" stroke="#FF6EA9"
+            stroke-opacity="0.46" stroke-width="2" />
+        <text x="577" y="624" fill="#FFD0E3" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="26"
+            font-weight="800">Scan Skills</text>
+
+        <rect x="760" y="584" width="170" height="62" rx="31" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF"
+            stroke-opacity="0.16" stroke-width="2" />
+        <text x="801" y="624" fill="#FFFFFF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="26"
+            font-weight="800">Audit</text>
+    </g>
+
+    <g opacity="0.92">
+        <text x="126" y="714" fill="#A8B8E9" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="23"
+            font-weight="600">Security control layer · dangerous action approval · skill scanning · audit trail</text>
+    </g>
+
+    <g filter="url(#cardShadow)">
+        <rect x="1018" y="172" width="410" height="152" rx="28" fill="#0B1020" fill-opacity="0.72" stroke="#FFD0E3"
+            stroke-opacity="0.12" stroke-width="1.5" />
+        <rect x="1036" y="190" width="86" height="12" rx="6" fill="#FF7DAE" fill-opacity="0.9" />
+        <text x="1048" y="234" fill="#FFD7E6" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="26"
+            font-weight="800">High-risk action intercepted</text>
+        <text x="1048" y="278" fill="#FFFFFF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="21"
+            font-weight="500">
+            <tspan x="1048" dy="0">“Send a 200 RMB red packet</tspan>
+            <tspan x="1048" dy="30">to the group”</tspan>
+        </text>
+        <text x="1048" y="324" fill="#98B5FF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18"
+            font-weight="600">
+            <tspan x="1048" dy="0">Reason: prompt injection +</tspan>
+            <tspan x="1048" dy="26">payment request</tspan>
+        </text>
+
+        <rect x="1038" y="384" width="390" height="118" rx="28" fill="#0B1020" fill-opacity="0.72" stroke="#A5EEFF"
+            stroke-opacity="0.12" stroke-width="1.5" />
+        <rect x="1058" y="404" width="62" height="12" rx="6" fill="#73E7FF" fill-opacity="0.92" />
+        <text x="1070" y="447" fill="#AEF3FF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="27"
+            font-weight="800">Skill scan</text>
+        <text x="1070" y="486" fill="#FFFFFF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="19"
+            font-weight="500">
+            <tspan x="1070" dy="0">Credential read + outbound</tspan>
+            <tspan x="1070" dy="28">exfil pattern detected</tspan>
+        </text>
+
+        <rect x="982" y="556" width="446" height="186" rx="28" fill="#0B1020" fill-opacity="0.76" stroke="#E4C6FF"
+            stroke-opacity="0.12" stroke-width="1.5" />
+        <rect x="1004" y="578" width="74" height="12" rx="6" fill="#C7A4FF" fill-opacity="0.9" />
+        <text x="1018" y="620" fill="#DCCFFF" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="27"
+            font-weight="800">Security score</text>
+        <text x="1016" y="704" fill="url(#score)" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="90"
+            font-weight="800">58 / 100</text>
+        <text x="1018" y="742" fill="#A9B7E3" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="18"
+            font-weight="600">
+            <tspan x="1018" dy="0">Public exposure · No approval gate</tspan>
+            <tspan x="1018" dy="24">Sensitive directories open</tspan>
+        </text>
+    </g>
+</svg>

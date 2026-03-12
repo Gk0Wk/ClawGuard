@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "jsx": "preserve",
+    "allowJs": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["astro/client"]
+  },
+  "include": ["src/**/*.astro", "src/**/*.ts", "src/**/*.d.ts"],
+  "exclude": ["dist"]
+}

@@ -3,6 +3,24 @@ import { execFixture, outboundFixture, workspaceMutationFixture } from '../fixtu
 
 import { describe, expect, it } from 'vitest';
 
+function buildApplyPatchArgs(params: Record<string, unknown>) {
+  return {
+    before_tool_call: {
+      event: {
+        toolName: 'apply_patch',
+        params,
+      },
+    },
+    session_policy: {
+      sessionKey: 'session-patch',
+      origin: {
+        channel: 'terminal',
+        to: 'workspace',
+      },
+    },
+  };
+}
+
 describe('Sprint 0 input normalization', () => {
   it('normalizes the exec example into shared text candidates', () => {
     const normalized = normalizeOpenClawInputs(execFixture.args);
@@ -30,7 +48,93 @@ describe('Sprint 0 input normalization', () => {
     expect(normalized.evaluation_input.raw_text_candidates).toEqual(workspaceMutationFixture.expected.raw_text_candidates);
     expect(normalized.evaluation_input.workspace_context).toEqual({
       paths: workspaceMutationFixture.expected.changed_paths,
-      summary: 'API_KEY=demo-key',
+      summary: 'export const featureFlag = true;',
     });
+  });
+
+  it('extracts a single file path from apply_patch text', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patch: '*** Begin Patch\n*** Update File: src\\risk\\engine.ts\n@@\n-export const oldValue = 1;\n+export const oldValue = 2;\n*** End Patch\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context).toEqual({
+      paths: ['src\\risk\\engine.ts'],
+      summary:
+        '*** Begin Patch\n*** Update File: src\\risk\\engine.ts\n@@\n-export const oldValue = 1;\n+export const oldValue = 2;\n*** End Patch',
+    });
+  });
+
+  it('extracts multiple file paths from multi-file apply_patch text', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patch:
+          '*** Begin Patch\n*** Add File: src\\generated\\new-file.ts\n+export const created = true;\n*** Update File: src\\generated\\existing-file.ts\n@@\n-export const flag = false;\n+export const flag = true;\n*** Delete File: src\\generated\\old-file.ts\n*** End Patch\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context?.paths).toEqual([
+      'src\\generated\\new-file.ts',
+      'src\\generated\\existing-file.ts',
+      'src\\generated\\old-file.ts',
+    ]);
+  });
+
+  it('extracts diff header paths from a slash-prefixed patch', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patch:
+          'diff --git a/src/app.ts b/src/app.ts\n--- a/src/app.ts\n+++ b/src/app.ts\n@@ -1 +1 @@\n-console.log("before");\n+console.log("after");\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context?.paths).toEqual(['src/app.ts']);
+  });
+
+  it('merges structured paths with patch-extracted paths without duplicates', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        path: 'src\\existing.ts',
+        filePath: 'src\\existing.ts',
+        paths: ['src\\shared.ts', 'src\\existing.ts', '  '],
+        patch:
+          '*** Begin Patch\n*** Update File: src\\existing.ts\n@@\n-export const version = 1;\n+export const version = 2;\n*** Add File: src\\added.ts\n+export const added = true;\n*** End Patch\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context?.paths).toEqual([
+      'src\\existing.ts',
+      'src\\shared.ts',
+      'src\\added.ts',
+    ]);
+  });
+
+  it('degrades safely when patch text has no path headers', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patch: '*** Begin Patch\n@@\n+no headers here\n*** End Patch\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context).toEqual({
+      paths: [],
+      summary: '*** Begin Patch\n@@\n+no headers here\n*** End Patch',
+    });
+  });
+
+  it.each([
+    '.env',
+    '.git\\hooks\\pre-commit',
+    '.ssh\\config',
+    'src\\features\\billing\\invoice-service.ts',
+  ])('extracts patch-only workspace paths for %s', (expectedPath) => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patch: `*** Begin Patch\n*** Update File: ${expectedPath}\n@@\n-placeholder\n+updated\n*** End Patch\n`,
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context?.paths).toEqual([expectedPath]);
   });
 });

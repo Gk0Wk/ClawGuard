@@ -1,8 +1,9 @@
-import { ResponseAction } from '../shared/index.js';
+import { PolicyDecisionReasonCode, ResponseAction } from '../shared/index.js';
 
 export interface PolicyDecision {
   readonly decision_id: string;
   readonly decision: ResponseAction;
+  readonly reason_code: PolicyDecisionReasonCode;
   readonly reason: string;
   readonly requires_approval: boolean;
   readonly block_immediately: boolean;

@@ -1,0 +1,51 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const updates = [
+  {
+    title: '官网与 GitHub Pages 首版上线',
+    description: 'clawguard.top 现在已经有了第一版对外官网，后续会持续补更完整的产品介绍、demo 和公开进展。',
+    status: 'Latest'
+  },
+  {
+    title: '危险动作确认 Demo',
+    description: '优先把“群聊诱导 AI 发红包 / 转账被拦截”做成最直观、最容易理解的演示场景。',
+    status: 'Next'
+  },
+  {
+    title: 'skills 扫描与泄密拦截',
+    description: '继续把可疑 skills 体检和敏感信息外发拦截打磨成真正可用、可演示的产品能力。',
+    status: 'Soon'
+  }
+];
+---
+
+<BaseLayout title="ClawGuard 最新进展" description="ClawGuard 的最新产品进展、Demo 更新和公开里程碑。">
+  <main class="page-shell updates-shell">
+    <section class="container updates-hero">
+      <a class="back-link" href="/">← 返回首页</a>
+      <span class="section-tag">Latest updates</span>
+      <h1>ClawGuard 的最新进展</h1>
+      <p>
+        这里会持续更新官网进展、Demo 场景、能力里程碑和公开发布内容。你可以把它当作 ClawGuard 的产品动态页，快速了解这个项目最近在往哪里推进。
+      </p>
+    </section>
+
+    <section class="container update-list">
+      {updates.map((item) => (
+        <article class="update-card">
+          <div class="update-status">{item.status}</div>
+          <h2>{item.title}</h2>
+          <p>{item.description}</p>
+        </article>
+      ))}
+    </section>
+
+    <section class="container update-note">
+      <div class="compare-card good">
+        <h3>接下来会继续补什么</h3>
+        <p>Release notes、demo GIF、产品场景拆解、关键能力上线说明，以及每个版本最值得关注的新变化。</p>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

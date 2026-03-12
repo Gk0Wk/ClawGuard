@@ -24,6 +24,7 @@ export enum ResponseAction {
 }
 
 export enum RiskEventType {
+  Neutral = 'neutral',
   Exec = 'exec',
   Outbound = 'outbound',
   WorkspaceMutation = 'workspace_mutation',
@@ -73,6 +74,23 @@ export enum ApprovalResultStatus {
   Denied = 'denied',
   Expired = 'expired',
   Bypassed = 'bypassed',
+}
+
+export enum ApprovalCategory {
+  Exec = 'exec',
+  Outbound = 'outbound',
+  WorkspaceMutation = 'workspace_mutation',
+  Generic = 'generic',
+}
+
+export enum PolicyDecisionReasonCode {
+  SessionExecPolicy = 'session_exec_policy',
+  SessionSendPolicy = 'session_send_policy',
+  FastPathCommand = 'fast_path_command',
+  FastPathPath = 'fast_path_path',
+  FastPathSecret = 'fast_path_secret',
+  FastPathDestination = 'fast_path_destination',
+  DefaultAllow = 'default_allow',
 }
 
 export enum ExecutionStatus {

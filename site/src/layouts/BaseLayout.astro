@@ -1,0 +1,80 @@
+---
+import '../styles/site.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  keywords?: string[];
+  image?: string;
+  noindex?: boolean;
+  type?: 'website' | 'article';
+  structuredData?: Record<string, unknown> | Array<Record<string, unknown>>;
+}
+
+const {
+  title = 'ClawGuard — The antivirus for OpenClaw',
+  description = 'ClawGuard is the OpenClaw security layer: approve dangerous actions, scan skills, block secret leaks, and keep humans in control.',
+  keywords = [
+    'ClawGuard',
+    'OpenClaw security',
+    'OpenClaw antivirus',
+    'dangerous action approval',
+    'skill scanning',
+    'secret leak prevention',
+    'agent security',
+    'human in the loop security'
+  ],
+  image = '/og-image.svg',
+  noindex = false,
+  type = 'website',
+  structuredData,
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://clawguard.top').toString();
+const socialImage = new URL(image, Astro.site ?? 'https://clawguard.top').toString();
+const robotsContent = noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large';
+const structuredDataList = structuredData
+  ? Array.isArray(structuredData)
+    ? structuredData
+    : [structuredData]
+  : [];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="keywords" content={keywords.join(', ')} />
+    <meta name="robots" content={robotsContent} />
+    <meta name="theme-color" content="#08111f" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="ClawGuard" />
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:alt" content="ClawGuard — The antivirus for OpenClaw" />
+    <meta property="og:locale" content="zh_CN" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImage} />
+
+    {
+      structuredDataList.map((entry) => (
+        <script type="application/ld+json" set:html={JSON.stringify(entry)} />
+      ))
+    }
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

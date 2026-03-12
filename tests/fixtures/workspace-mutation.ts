@@ -28,15 +28,15 @@ export const workspaceMutationFixture = {
         sessionKey: ' clawguard-session-workspace ',
         toolCallId: ' tool-workspace-001 ',
       },
-      event: {
-        params: {
-          content: '  API_KEY=demo-key  ',
-          path: '  .env  ',
-          paths: ['  .env  ', ' src\\generated\\config.ts ', '   '],
-        },
-        runId: ' run-workspace-001 ',
-        toolCallId: ' tool-workspace-001 ',
-        toolName: ' write ',
+        event: {
+          params: {
+            content: '  export const featureFlag = true;  ',
+            path: '  src\\generated\\config.ts  ',
+            paths: ['  src\\generated\\config.ts  ', ' src\\generated\\feature-flags.ts ', '   '],
+          },
+          runId: ' run-workspace-001 ',
+          toolCallId: ' tool-workspace-001 ',
+          toolName: ' write ',
       },
     },
     session_policy: {
@@ -49,9 +49,9 @@ export const workspaceMutationFixture = {
   } satisfies BuildEvaluationArtifactsArgs,
   expected: {
     audit_final_status: AuditRecordFinalStatus.Allowed,
-    changed_paths: ['.env', 'src\\generated\\config.ts'],
+    changed_paths: ['src\\generated\\config.ts', 'src\\generated\\feature-flags.ts'],
     decision: ResponseAction.Allow,
-    raw_text_candidates: ['API_KEY=demo-key', '.env'],
+    raw_text_candidates: ['export const featureFlag = true;', 'src\\generated\\config.ts'],
     risk_domain: RiskDomain.Execution,
     risk_event_status: RiskEventStatus.Allowed,
     run_status: RunStatus.Completed,

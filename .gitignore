@@ -8,3 +8,6 @@ coverage/
 copilot-instructions.md
 .pnpm-store/
 package-lock.json
+site/.astro/
+site/dist/
+site/node_modules/

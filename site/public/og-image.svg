@@ -1,0 +1,59 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="bg" x1="68" y1="44" x2="1128" y2="592" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#061320" />
+            <stop offset="0.48" stop-color="#122347" />
+            <stop offset="1" stop-color="#241151" />
+        </linearGradient>
+        <radialGradient id="g1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+            gradientTransform="translate(206 124) rotate(33.7) scale(252 166)">
+            <stop stop-color="#23E0FF" stop-opacity="0.42" />
+            <stop offset="1" stop-color="#23E0FF" stop-opacity="0" />
+        </radialGradient>
+        <radialGradient id="g2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse"
+            gradientTransform="translate(926 490) rotate(90) scale(218 310)">
+            <stop stop-color="#FF5CA8" stop-opacity="0.32" />
+            <stop offset="1" stop-color="#FF5CA8" stop-opacity="0" />
+        </radialGradient>
+        <linearGradient id="panel" x1="78" y1="74" x2="1132" y2="552" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#0D2440" stop-opacity="0.88" />
+            <stop offset="1" stop-color="#241B52" stop-opacity="0.78" />
+        </linearGradient>
+        <linearGradient id="score" x1="788" y1="428" x2="1016" y2="428" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#985FFF" />
+            <stop offset="0.5" stop-color="#F04EBE" />
+            <stop offset="1" stop-color="#FF7AA2" />
+        </linearGradient>
+    </defs>
+    <rect width="1200" height="630" rx="28" fill="url(#bg)" />
+    <ellipse cx="188" cy="122" rx="210" ry="144" fill="url(#g1)" />
+    <ellipse cx="930" cy="494" rx="252" ry="176" fill="url(#g2)" />
+    <rect x="54" y="54" width="1092" height="522" rx="26" fill="url(#panel)" stroke="rgba(255,255,255,0.10)" />
+    <rect x="82" y="86" width="212" height="44" rx="22" fill="rgba(35,224,255,0.10)" stroke="rgba(35,224,255,0.20)" />
+    <circle cx="112" cy="108" r="7" fill="#91EEFF" />
+    <text x="132" y="116" fill="#A8F2FF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22"
+        font-weight="800">OPENCLAW SECURITY</text>
+    <text x="82" y="240" fill="white" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="86"
+        font-weight="800">ClawGuard</text>
+    <text x="82" y="302" fill="#C6D4FF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34"
+        font-weight="700">The antivirus for OpenClaw</text>
+    <text x="82" y="376" fill="#EAF0FF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26"
+        font-weight="600">Approve dangerous actions · Scan skills · Block secret leaks</text>
+    <text x="82" y="414" fill="#EAF0FF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26"
+        font-weight="600">Put humans back in control</text>
+    <rect x="748" y="120" width="310" height="118" rx="24" fill="rgba(5,10,24,0.78)" stroke="rgba(255,255,255,0.10)" />
+    <text x="778" y="165" fill="#FFD9E8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24"
+        font-weight="800">Dangerous action intercepted</text>
+    <text x="778" y="206" fill="#B8C7F8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18"
+        font-weight="600">Prompt injection + payment request</text>
+    <rect x="776" y="278" width="282" height="94" rx="24" fill="rgba(5,10,24,0.78)" stroke="rgba(255,255,255,0.10)" />
+    <text x="806" y="321" fill="#AEF4FF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24"
+        font-weight="800">Skill scan</text>
+    <text x="806" y="356" fill="#B8C7F8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18"
+        font-weight="600">Credential read + outbound exfil detected</text>
+    <rect x="724" y="410" width="334" height="128" rx="24" fill="rgba(5,10,24,0.82)" stroke="rgba(255,255,255,0.10)" />
+    <text x="754" y="452" fill="#D8CCFF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24"
+        font-weight="800">Security score</text>
+    <text x="754" y="518" fill="url(#score)" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="68"
+        font-weight="900">58 / 100</text>
+</svg>

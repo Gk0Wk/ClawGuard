@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: '如何给 OpenClaw 加危险动作审批',
+  description: 'ClawGuard 通过 human approval gate，让 OpenClaw 在转账、发红包、删文件、跑 shell 等高风险动作前先问人。',
+  url: 'https://clawguard.top/scenarios/dangerous-action-approval/',
+  author: {
+    '@type': 'Organization',
+    name: 'ClawGuard'
+  }
+};
+---
+
+<BaseLayout
+  title="如何给 OpenClaw 加危险动作审批 | ClawGuard"
+  description="ClawGuard 通过危险动作审批（dangerous action approval），让 OpenClaw 在转账、发红包、删文件、跑 shell 等高风险动作前先问人。"
+  keywords={['OpenClaw 审批', 'dangerous action approval', 'OpenClaw dangerous actions', 'human approval gate', 'AI 危险动作审批']}
+  type="article"
+  structuredData={structuredData}
+>
+  <main class="page-shell updates-shell">
+    <section class="container updates-hero">
+      <a class="back-link" href="/">← 返回首页</a>
+      <span class="section-tag">Scenario</span>
+      <h1>如何给 OpenClaw 加危险动作审批</h1>
+      <p>
+        如果 OpenClaw 能发红包、转账、删文件、跑 shell、改配置，那真正让人安心的不是“它更聪明”，而是这些高风险动作在执行前先问人。ClawGuard 做的就是这道 human approval gate。
+      </p>
+    </section>
+
+    <section class="container update-list single-column">
+      <article class="update-card">
+        <h2>为什么这件事重要</h2>
+        <p>普通用户不一定会搜索“policy engine”或“runtime governance”，但会搜索“怎么防止 AI 自己发钱”“怎么让 OpenClaw 删文件前先问我”。危险动作审批就是最容易被理解、也最容易被记住的安全入口。</p>
+      </article>
+      <article class="update-card">
+        <h2>ClawGuard 怎么做</h2>
+        <p>ClawGuard 会在动作进入执行链之前识别风险级别：该审批的动作先弹出审批请求，该直接阻断的动作直接拦下，该允许的动作继续执行。这样用户得到的不是模糊提醒，而是明确控制权。</p>
+      </article>
+      <article class="update-card">
+        <h2>最典型的场景</h2>
+        <p>群聊消息诱导 AI 发红包 / 转账、模糊命令触发批量删文件、shell 命令带来下载即执行风险、外发动作把敏感信息一并带走——这些都属于“执行前必须先问人”的高风险动作。</p>
+      </article>
+    </section>
+  </main>
+</BaseLayout>
