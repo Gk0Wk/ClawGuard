@@ -20,7 +20,7 @@ const INSTALL_DEMO = {
     '/plugins/clawguard/audit',
   ],
   coverage:
-    'Risky exec, minimal outbound, minimal workspace mutation, plus plugin-hosted approvals, audit, and settings pages.',
+    'Risky exec, minimal outbound, minimal workspace mutation coverage for write / edit / apply_patch actions, plus plugin-hosted approvals, audit, and settings pages.',
   limitations:
     'Host-level outbound coverage is currently only the message_sending hard block, not the full outbound lifecycle.',
 };

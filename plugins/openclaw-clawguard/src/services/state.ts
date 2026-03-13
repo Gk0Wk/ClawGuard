@@ -1,10 +1,12 @@
 import {
   ApprovalActorType,
+  ApprovalResultStatus,
   ResponseAction,
   ToolStatus,
   applyApprovalResultToEvaluationArtifacts,
   applyPostExecutionResultToEvaluationArtifacts,
   buildOpenClawEvaluationArtifacts,
+  type ApprovalResult,
   type ApprovalIntegratedArtifacts,
   type EvaluationArtifacts,
 } from 'clawguard';
@@ -489,13 +491,13 @@ function buildGuardedEvaluationArtifacts(
 function createSyntheticApprovalResult(
   artifacts: EvaluationArtifacts,
   grantResult: Extract<ReturnType<StateRepository['consumeMatchingGrant']>, { readonly ok: true }>,
-) {
+): ApprovalResult {
   return {
     approval_result_id: createId('approval-result'),
     approval_request_id: artifacts.approval_request!.approval_request_id,
     event_id: artifacts.approval_request!.event_id,
     decision_id: artifacts.approval_request!.decision_id,
-    result: 'approved' as const,
+    result: ApprovalResultStatus.Approved,
     actor_type: ApprovalActorType.User,
     acted_at:
       grantResult.pendingAction?.approved_at ??

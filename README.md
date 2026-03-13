@@ -49,7 +49,7 @@ Today that demo covers:
 
 - **risky `exec`**
 - **minimal outbound coverage**
-- **minimal workspace mutation coverage**
+- **minimal workspace mutation coverage for `write` / `edit` / `apply_patch` actions**
 - **plugin-hosted approvals, audit, and settings pages** at:
   - `/plugins/clawguard/settings`
   - `/plugins/clawguard/approvals`
@@ -87,7 +87,7 @@ Important posture:
 - `@clawguard/openclaw-clawguard` is currently **metadata / future-compatibility naming only**,
 - and this README does **not** imply npm publish, GA, or a formal release.
 
-After install, restart OpenClaw, then use the plugin README for the smoke path and page checks.
+After install, restart OpenClaw, then use the plugin README operator runbook for the smoke path, 1-minute demo order, and 3-minute demo order.
 
 ## Demo scenarios
 
@@ -101,6 +101,7 @@ The current public-demo-ready scenarios are intentionally narrow:
    - Host-level outbound coverage is still intentionally limited.
 3. **Minimal workspace mutation**
    - Risky file-change flows can enter the same approval / audit path.
+   - In the current demo surface, `write` / `edit` / `apply_patch` are all explained as workspace mutation actions.
 4. **Plugin-hosted operator flow**
    - Settings, approvals, and audit pages provide the current demo surface.
 
@@ -129,7 +130,7 @@ Please read this repo with the current scope in mind:
 
 ### Start here
 
-- [`plugins/openclaw-clawguard/README.md`](./plugins/openclaw-clawguard/README.md) — install-demo entry, local path install, optional local tarball, smoke path
+- [`plugins/openclaw-clawguard/README.md`](./plugins/openclaw-clawguard/README.md) — install-demo entry, operator runbook, local path install, optional local tarball, smoke path, 1-minute / 3-minute demo order
 - [`docs/v1-installer-demo-strategy.md`](./docs/v1-installer-demo-strategy.md) — install-demo posture and why the current path is plugin-first, local-only, and not published
 - [`docs/v1-north-star-demo-script.md`](./docs/v1-north-star-demo-script.md) — the flagship “group message tries to make OpenClaw send money” demo narrative
 

@@ -34,9 +34,9 @@ This update is currently:
 ## How to try it locally
 
 - Recommended local path install:
-  - `openclaw plugins install .\\plugins\\openclaw-clawguard`
+  - `openclaw plugins install .\plugins\openclaw-clawguard`
 - Optional local tarball path:
-  - `pnpm --dir plugins\\openclaw-clawguard pack`
+  - `pnpm --dir plugins\openclaw-clawguard pack`
 
 ## Verification
 

@@ -109,7 +109,8 @@ export function createApprovalsRoute(state: ClawGuardState) {
         return endJson(res, 404, { error: 'Approval action not found.' });
       }
 
-      const [, pendingActionId, action] = match;
+      const [, pendingActionId, rawAction] = match;
+      const action: 'approve' | 'deny' = rawAction === 'approve' ? 'approve' : 'deny';
       const updated =
         action === 'approve'
           ? state.approvePendingAction(pendingActionId)

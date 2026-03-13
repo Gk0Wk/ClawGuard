@@ -19,9 +19,6 @@
     "paths": {
       "clawguard": [
         "src/index.ts"
-      ],
-      "openclaw/plugin-sdk/core": [
-        "openclaw/src/plugin-sdk/core.ts"
       ]
     },
     "types": [
@@ -30,6 +27,7 @@
     ]
   },
   "include": [
+    "src/**/*.d.ts",
     "src/**/*.ts",
     "plugins/**/*.ts",
     "tests/**/*.ts",

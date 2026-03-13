@@ -37,7 +37,7 @@
 
 - **高风险 `exec`**
 - **最小 outbound 覆盖**
-- **最小 workspace mutation 覆盖**
+- **最小 workspace mutation 覆盖（当前统一指 `write` / `edit` / `apply_patch` 这组动作）**
 - **插件自带的 approvals / audit / settings 页面**：
   - `/plugins/clawguard/settings`
   - `/plugins/clawguard/approvals`
@@ -75,7 +75,7 @@ openclaw plugins install .\plugins\openclaw-clawguard\<generated-tarball>.tgz
 - `@clawguard/openclaw-clawguard` 目前只是 **元数据 / 未来兼容命名占位**
 - 这里**不代表** npm publish、GA 或正式 release 已经存在
 
-安装后请重启 OpenClaw，再按插件 README 里的 smoke path 检查页面。
+安装后请重启 OpenClaw，再按插件 README 里的 operator runbook 走 smoke path、1 分钟 demo 顺序和 3 分钟 demo 顺序。
 
 ## Demo 场景
 
@@ -89,6 +89,7 @@ openclaw plugins install .\plugins\openclaw-clawguard\<generated-tarball>.tgz
    - 不把它包装成完整 outbound 生命周期
 3. **Minimal workspace mutation**
    - 风险文件改动可以走相同的审批 / 审计链路
+   - 当前对外统一口径是：`write` / `edit` / `apply_patch` 都属于这条 workspace mutation actions demo surface
 4. **插件页面演示面**
    - settings / approvals / audit 是当前 demo 的主要承载面
 
@@ -117,7 +118,7 @@ openclaw plugins install .\plugins\openclaw-clawguard\<generated-tarball>.tgz
 
 ### 先看这些
 
-- [`plugins/openclaw-clawguard/README.md`](./plugins/openclaw-clawguard/README.md) — install demo 入口、推荐安装命令、本地 tarball 备选路径、smoke path
+- [`plugins/openclaw-clawguard/README.md`](./plugins/openclaw-clawguard/README.md) — install demo 入口、operator runbook、推荐安装命令、本地 tarball 备选路径、smoke path、1 分钟 / 3 分钟 demo 顺序
 - [`docs/v1-installer-demo-strategy.md`](./docs/v1-installer-demo-strategy.md) — install demo 口径、插件优先路线与“未发布”说明
 - [`docs/v1-north-star-demo-script.md`](./docs/v1-north-star-demo-script.md) — 主 demo 叙事：“群消息诱导 OpenClaw 发钱，被 ClawGuard 拦住”
 

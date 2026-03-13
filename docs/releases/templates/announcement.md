@@ -16,11 +16,11 @@ ClawGuard now ships an updated OpenClaw install demo baseline with clearer local
 
 From repo root:
 
-- `openclaw plugins install .\\plugins\\openclaw-clawguard`
+- `openclaw plugins install .\plugins\openclaw-clawguard`
 
 Optional local tarball:
 
-- `pnpm --dir plugins\\openclaw-clawguard pack`
+- `pnpm --dir plugins\openclaw-clawguard pack`
 
 ## Scope reminder
 

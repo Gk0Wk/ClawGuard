@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -14,8 +15,51 @@ import { createSettingsRoute } from '../../plugins/openclaw-clawguard/src/routes
 import { createClawGuardState } from '../../plugins/openclaw-clawguard/src/services/state.js';
 import type { Clock } from '../../plugins/openclaw-clawguard/src/types.js';
 
-const loaderModule = await import('../../openclaw/src/plugins/loader.js').catch(() => null);
-const loadOpenClawPlugins = loaderModule?.loadOpenClawPlugins;
+interface OpenClawPluginRegistry {
+  readonly plugins: ReadonlyArray<{
+    readonly id: string;
+    readonly status: string;
+    readonly hookNames: ReadonlyArray<string>;
+  }>;
+  readonly httpRoutes: ReadonlyArray<{
+    readonly pluginId: string;
+    readonly path: string;
+    readonly auth: string;
+    readonly match: string;
+  }>;
+}
+
+interface OpenClawPluginLoaderOptions {
+  readonly cache: boolean;
+  readonly workspaceDir: string;
+  readonly config: {
+    readonly plugins: {
+      readonly load: {
+        readonly paths: ReadonlyArray<string>;
+      };
+      readonly allow: ReadonlyArray<string>;
+    };
+  };
+}
+
+type LoadOpenClawPlugins = (options: OpenClawPluginLoaderOptions) => OpenClawPluginRegistry;
+
+function isOpenClawLoaderModule(value: unknown): value is { loadOpenClawPlugins: LoadOpenClawPlugins } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'loadOpenClawPlugins' in value &&
+    typeof value.loadOpenClawPlugins === 'function'
+  );
+}
+
+const loaderModuleUrl = pathToFileURL(
+  path.resolve('openclaw', 'src', 'plugins', 'loader.js'),
+).href;
+const loaderModule = await import(loaderModuleUrl).catch(() => null);
+const loadOpenClawPlugins = isOpenClawLoaderModule(loaderModule)
+  ? loaderModule.loadOpenClawPlugins
+  : undefined;
 const installDemoPluginRoot = path.resolve('plugins', 'openclaw-clawguard');
 
 class FakeClock implements Clock {
