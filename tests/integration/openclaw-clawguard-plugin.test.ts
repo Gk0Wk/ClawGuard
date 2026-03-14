@@ -926,6 +926,44 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain('rename-like');
   });
 
+  it('keeps low-confidence short edit replacements on modify semantics in pending-action messaging and approvals HTML', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const route = createApprovalsRoute(state);
+    const { event, context } = createWorkspaceEditEvent({
+      path: '.env',
+      oldText: 'x1',
+      newText: 'x2',
+    });
+
+    const result = beforeHandler(event, context);
+    const pending = state.pendingActions.list()[0];
+    const htmlResponse = createMockResponse();
+
+    route(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/approvals',
+      } as never,
+      htmlResponse as never,
+    );
+
+    expect(result).toMatchObject({ block: true });
+    expect(pending.tool_name).toBe('edit');
+    expect(pending.guidance_summary).toContain('modify');
+    expect(pending.guidance_summary).not.toContain('rename-like');
+    expect(result?.blockReason).toContain('Guidance:');
+    expect(result?.blockReason).toContain('modify');
+    expect(result?.blockReason).not.toContain('rename-like');
+    expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.body).toContain('Guidance:</strong>');
+    expect(htmlResponse.body).toContain('modify');
+    expect(htmlResponse.body).not.toContain('rename-like');
+    expect(htmlResponse.body).toContain('Impact scope:</strong> .env');
+    expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain('modify');
+    expect(getLatestAuditByKind(state, 'blocked')?.detail).not.toContain('rename-like');
+  });
+
   it('blocks critical workspace writes immediately without creating a pending action', () => {
     const state = createClawGuardState();
     const beforeHandler = createBeforeToolCallHandler(state);

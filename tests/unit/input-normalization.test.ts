@@ -87,13 +87,67 @@ describe('Sprint 0 input normalization', () => {
       expectedOperationType: 'delete',
     },
     {
-      label: 'rename-like',
+      label: 'rename-like camelCase identifier rename',
       params: {
         path: 'src\\generated\\feature-flags.ts',
         oldText: 'legacyFeatureFlag',
         newText: 'clawGuardFeatureFlag',
       },
       expectedOperationType: 'rename-like',
+    },
+    {
+      label: 'rename-like snake_case identifier rename',
+      params: {
+        path: 'src\\generated\\feature-flags.ts',
+        oldText: 'legacy_feature_flag',
+        newText: 'claw_guard_feature_flag',
+      },
+      expectedOperationType: 'rename-like',
+    },
+    {
+      label: 'rename-like SCREAMING_SNAKE_CASE identifier rename',
+      params: {
+        path: 'src\\generated\\feature-flags.ts',
+        oldText: 'LEGACY_FEATURE_FLAG',
+        newText: 'CLAWGUARD_FEATURE_FLAG',
+      },
+      expectedOperationType: 'rename-like',
+    },
+    {
+      label: 'modify across naming-family boundary',
+      params: {
+        path: 'src\\generated\\feature-flags.ts',
+        oldText: 'legacyFeatureFlag',
+        newText: 'claw_guard_feature_flag',
+      },
+      expectedOperationType: 'modify',
+    },
+    {
+      label: 'modify for ordinary token value replacement',
+      params: {
+        path: 'src\\generated\\feature-flags.ts',
+        oldText: 'enabled',
+        newText: 'disabled',
+      },
+      expectedOperationType: 'modify',
+    },
+    {
+      label: 'modify for short token replacement',
+      params: {
+        path: 'src\\generated\\feature-flags.ts',
+        oldText: 'x1',
+        newText: 'x2',
+      },
+      expectedOperationType: 'modify',
+    },
+    {
+      label: 'modify for version-like replacement',
+      params: {
+        path: 'src\\generated\\feature-flags.ts',
+        oldText: '1.0.0',
+        newText: '2.0.0',
+      },
+      expectedOperationType: 'modify',
     },
   ])('classifies edit workspace mutation semantics for $label updates', ({ expectedOperationType, params }) => {
     const normalized = normalizeOpenClawInputs({

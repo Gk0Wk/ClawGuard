@@ -87,18 +87,70 @@ function normalizeWorkspaceMutationText(value: unknown): string | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
+type IdentifierFamily =
+  | 'camelCase'
+  | 'PascalCase'
+  | 'snake_case'
+  | 'SCREAMING_SNAKE_CASE';
+
+const IDENTIFIER_LITERAL_KEYWORDS = new Set(['true', 'false', 'null', 'undefined', 'nan', 'infinity']);
+
 function isRenameLikeEdit(oldText: string, newText: string): boolean {
   if (oldText === newText) {
     return false;
   }
 
-  return isRenameLikeToken(oldText) && isRenameLikeToken(newText);
-}
-
-function isRenameLikeToken(value: string): boolean {
-  if (value.length > 120 || /\r|\n/u.test(value) || /\s/u.test(value)) {
+  const oldFamily = detectIdentifierFamily(oldText);
+  if (!oldFamily) {
     return false;
   }
 
-  return /^[A-Za-z0-9_.\-\\/]+$/u.test(value);
+  return (
+    oldFamily === detectIdentifierFamily(newText) &&
+    extractLetters(oldText) !== extractLetters(newText)
+  );
+}
+
+function detectIdentifierFamily(value: string): IdentifierFamily | undefined {
+  if (!isHighConfidenceIdentifierCandidate(value)) {
+    return undefined;
+  }
+
+  if (/^[a-z]+(?:[A-Z][A-Za-z0-9]*)+$/u.test(value)) {
+    return 'camelCase';
+  }
+
+  if (/^(?:[A-Z][a-z0-9]+){2,}$/u.test(value)) {
+    return 'PascalCase';
+  }
+
+  if (/^[a-z]+(?:_[a-z0-9]+)+$/u.test(value)) {
+    return 'snake_case';
+  }
+
+  if (/^[A-Z]+(?:_[A-Z0-9]+)+$/u.test(value)) {
+    return 'SCREAMING_SNAKE_CASE';
+  }
+
+  return undefined;
+}
+
+function isHighConfidenceIdentifierCandidate(value: string): boolean {
+  if (value.length < 3 || value.length > 120 || /\r|\n/u.test(value) || /\s/u.test(value)) {
+    return false;
+  }
+
+  if (!/^[A-Za-z0-9_]+$/u.test(value) || !/[A-Za-z]/u.test(value) || /^\d+$/u.test(value)) {
+    return false;
+  }
+
+  if (IDENTIFIER_LITERAL_KEYWORDS.has(value.toLowerCase())) {
+    return false;
+  }
+
+  return extractLetters(value).length >= 4;
+}
+
+function extractLetters(value: string): string {
+  return Array.from(value.matchAll(/[A-Za-z]/gu), (match) => match[0]).join('');
 }

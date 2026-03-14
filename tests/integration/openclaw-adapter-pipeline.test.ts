@@ -265,6 +265,40 @@ describe('OpenClaw adapter pipeline', () => {
     expect(result.risk_event.explanation).toContain('Workspace operation type=rename-like.');
   });
 
+  it('downgrades low-confidence edit replacements to modify semantics in approval and audit artifacts', () => {
+    const result = buildOpenClawEvaluationArtifacts({
+      clock: fixedClock,
+      before_tool_call: {
+        event: {
+          toolName: 'edit',
+          params: {
+            path: '.env',
+            oldText: 'x1',
+            newText: 'x2',
+          },
+          runId: 'run-edit-short-token-1',
+          toolCallId: 'tool-edit-short-token-1',
+        },
+      },
+      session_policy: {
+        sessionKey: 'session-edit-short-token',
+      },
+    });
+
+    expect(result.evaluation_input.workspace_context).toEqual({
+      paths: ['.env'],
+      summary: 'x2',
+      operation_type: 'modify',
+    });
+    expect(result.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
+    expect(result.approval_request).toMatchObject({
+      action_title: 'Approve workspace mutation (modify)',
+      impact_scope: '.env',
+    });
+    expect(result.risk_event.summary).toContain('modify');
+    expect(result.risk_event.explanation).toContain('Workspace operation type=modify.');
+  });
+
   it.each([
     {
       caseId: 'env',
