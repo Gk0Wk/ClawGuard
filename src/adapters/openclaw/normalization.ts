@@ -1,4 +1,10 @@
-import type { EvaluationDestination, EvaluationInput, EvaluationOrigin, WorkspaceContext } from '../../domain/context/index.js';
+import {
+  detectWorkspaceMutationOperationType,
+  type EvaluationDestination,
+  type EvaluationInput,
+  type EvaluationOrigin,
+  type WorkspaceContext,
+} from '../../domain/context/index.js';
 import {
   RunStatus,
   ToolPhase,
@@ -180,7 +186,7 @@ function normalizeWorkspaceContext(
 
   const patchText = firstString(toolParams, ['patch', 'patchText']);
   const candidatePaths = dedupeStrings([
-    firstString(toolParams, ['path', 'filePath']),
+    firstString(toolParams, ['path', 'filePath', 'patchPath', 'fromPath', 'toPath', 'oldPath', 'newPath']),
     ...readStringArray(toolParams.paths),
     ...extractPatchPaths(patchText),
   ]);
@@ -188,6 +194,7 @@ function normalizeWorkspaceContext(
   return {
     paths: candidatePaths,
     summary: firstString(toolParams, ['patch', 'patchText', 'content', 'newText', 'new_string', 'oldText', 'old_string']),
+    operation_type: detectWorkspaceMutationOperationType(normalizedToolName, toolParams),
   };
 }
 
@@ -292,6 +299,15 @@ function extractPatchPaths(patchText: string | undefined): string[] {
       continue;
     }
 
+    const applyPatchMoveMatch = line.match(/^\*\*\* Move to:\s+(.+)$/u);
+    if (applyPatchMoveMatch) {
+      const path = normalizePatchPath(applyPatchMoveMatch[1]);
+      if (path) {
+        extractedPaths.push(path);
+      }
+      continue;
+    }
+
     const diffHeaderMatch = line.match(/^diff --git\s+a\/(.+?)\s+b\/(.+)$/u);
     if (diffHeaderMatch) {
       const fromPath = normalizeDiffPath(diffHeaderMatch[1], 'a');
@@ -315,9 +331,9 @@ function extractPatchPaths(patchText: string | undefined): string[] {
       continue;
     }
 
-    const renameHeaderMatch = line.match(/^rename (?:from|to)\s+(.+)$/u);
-    if (renameHeaderMatch) {
-      const path = normalizePatchPath(renameHeaderMatch[1]);
+    const renameOrCopyHeaderMatch = line.match(/^(?:rename|copy) (?:from|to)\s+(.+)$/u);
+    if (renameOrCopyHeaderMatch) {
+      const path = normalizePatchPath(renameOrCopyHeaderMatch[1]);
       if (path) {
         extractedPaths.push(path);
       }

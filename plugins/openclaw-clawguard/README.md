@@ -12,12 +12,12 @@ This install demo currently covers:
 
 - risky `exec`
 - minimal outbound coverage
-- minimal workspace mutation coverage for `write` / `edit` / `apply_patch` actions
+- minimal workspace mutation coverage for `write` / `edit` / `apply_patch` actions, with alpha-safe checks for key config files, repo automation metadata, and obvious out-of-workspace writes
 - plugin-hosted pages at `/plugins/clawguard/settings`, `/plugins/clawguard/approvals`, and `/plugins/clawguard/audit`
 
 Current limitation:
 
-- host-level outbound coverage is currently only the `message_sending` hard block, not a full outbound lifecycle
+- host-level outbound now keeps hard blocks on `message_sending` and closes allowed / failed delivery on `message_sent`, while approval ownership stays on tool-level `message` / `sessions_send`
 
 ## Recommended install method: local path from repo root
 
@@ -53,6 +53,22 @@ After install and restart:
 
 If you are watching logs, the plugin also reports that the ClawGuard demo plugin loaded.
 
+### Important note about Control UI navigation
+
+Today, OpenClaw plugins can register HTTP routes, but the current plugin API does **not** provide a first-class way to add a new left-nav Control UI tab such as **Security**.
+
+That means the current demo should be verified by opening the plugin-owned routes directly:
+
+- `/plugins/clawguard/settings`
+- `/plugins/clawguard/approvals`
+- `/plugins/clawguard/audit`
+
+Current practical options for a future embedded experience are:
+
+1. keep growing the plugin-owned pages and later consolidate them into `/plugins/clawguard/dashboard`
+2. add a custom/patched Control UI nav link that points at that route
+3. wait for or contribute an upstream OpenClaw plugin-navigation API
+
 ## Smoke path
 
 - `/plugins/clawguard/settings`
@@ -75,7 +91,7 @@ Use this as the short operator script for public demo recordings or local walkth
 2. Point to the recommended install command and optional local tarball path
 3. Open `/plugins/clawguard/approvals` and `/plugins/clawguard/audit`
 4. Run one fake-only risky `exec` example and show the approval / audit path
-5. Close by saying workspace mutation currently means the same fake-only review surface for `write` / `edit` / `apply_patch` actions
+5. Close by saying workspace mutation currently means the same fake-only review surface for `write` / `edit` / `apply_patch` actions, now with small alpha-safe heuristics around key config files, repo automation metadata, and obvious workspace escapes
 
 ### 3-minute demo order
 
@@ -84,7 +100,7 @@ Use this as the short operator script for public demo recordings or local walkth
 3. Restart OpenClaw and smoke `/plugins/clawguard/settings`, `/plugins/clawguard/approvals`, and `/plugins/clawguard/audit`
 4. Run a fake-only `exec` example and show the pending approval
 5. Run a fake-only outbound example and explain that outbound coverage is still intentionally minimal
-6. Run a fake-only workspace mutation example and explain that the current demo surface is the `write` / `edit` / `apply_patch` action set
+6. Run a fake-only workspace mutation example and explain that the current demo surface is the `write` / `edit` / `apply_patch` action set, with small alpha-safe heuristics for key config files, repo automation metadata, and obvious workspace escapes
 7. Close with the reminder that this is demo-only, unpublished, and not proof of real dangerous execution or real outbound delivery
 
 ## Fake-only demo scenarios
@@ -107,7 +123,7 @@ Ask OpenClaw to send a risky outbound message. Expected result:
 
 ### 3. Workspace mutation risk
 
-Ask OpenClaw to perform a risky file change such as a suspicious `write`, `edit`, or `apply_patch`. This shared `workspace mutation` action surface is fake-only. Expected result:
+Ask OpenClaw to perform a risky file change such as a suspicious `write`, `edit`, or `apply_patch`. This shared `workspace mutation` action surface is fake-only. Current alpha heuristics especially call out `.env`, `.git/hooks`, `.github/workflows`, key config files, and obvious workspace-escape paths. Expected result:
 
 - ClawGuard creates a pending approval or block decision
 - the action can be reviewed in `/plugins/clawguard/approvals`
@@ -121,4 +137,7 @@ Ask OpenClaw to perform a risky file change such as a suspicious `write`, `edit`
 - no registry publish should be implied
 - no real dangerous execution or real outbound verification should be implied
 - outbound coverage is still intentionally minimal
-- host-level outbound coverage is currently only `message_sending` hard block, rather than a full outbound lifecycle
+- host-level outbound keeps hard blocks on `message_sending` and closes allowed / failed delivery on `message_sent`, while approval ownership stays on tool-level `message` / `sessions_send`
+- workspace mutation heuristics remain intentionally small and fake-only: they only add explainable checks for key config files, repo automation metadata, and obvious out-of-workspace writes
+- the built-in Control UI sidebar is still core-owned and hard-coded; there is no official plugin API to register a left-nav `Security` tab yet
+- any future `Security` entry in Control UI therefore likely means either a custom/patched Control UI build or a future upstream plugin-nav capability

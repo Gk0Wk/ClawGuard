@@ -55,6 +55,12 @@ Today that demo covers:
   - `/plugins/clawguard/approvals`
   - `/plugins/clawguard/audit`
 
+Current Control UI posture:
+
+- the plugin can already expose its own HTTP surfaces under `/plugins/clawguard/*`,
+- but the current OpenClaw plugin API does **not** expose a formal way to register a left-nav tab such as **Security** inside the built-in Control UI,
+- so the current demo should be understood as **plugin-owned pages reachable from direct URLs**, not a first-class embedded dashboard tab yet.
+
 Current repo status:
 
 - the repo is still in a **docs-first + Sprint 0 code-bootstrap stage**,
@@ -122,8 +128,11 @@ Please read this repo with the current scope in mind:
 - **not a formal release**
 - **not presented as GA or a complete product**
 - **outbound coverage is still minimal**
-- **host-level outbound coverage is currently only the `message_sending` hard block, not a full outbound lifecycle**
+- **host-level outbound keeps hard blocks on `message_sending` and closes allowed / failed delivery on `message_sent`, while tool-level approvals stay on `message` / `sessions_send`**
 - **the approval loop is still a pending-action + allow-once-retry demo flow**
+- **the built-in Control UI sidebar is currently core-owned and hard-coded; there is no official plugin nav registration API for a `Security` tab yet**
+- **current UI integration therefore relies on direct plugin routes such as `/plugins/clawguard/settings`, `/plugins/clawguard/approvals`, and `/plugins/clawguard/audit`**
+- **future embedded Control UI options likely mean either (a) a plugin-owned `/plugins/clawguard/dashboard` route plus a custom/patched Control UI nav item, or (b) an upstream OpenClaw plugin-nav API that does not exist today**
 - **the demo should not be read as real dangerous execution, real transfer / red-packet execution, or full release-grade validation**
 
 ## Docs map

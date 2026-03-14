@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk/core';
 import { createAfterToolCallHandler } from './hooks/after-tool.js';
 import { createBeforeToolCallHandler } from './hooks/before-tool.js';
+import { createMessageSentHandler } from './hooks/message-sent.js';
 import { createMessageSendingHandler } from './hooks/message-sending.js';
 import { createApprovalsRoute } from './routes/approvals.js';
 import { createAuditRoute } from './routes/audit.js';
@@ -54,9 +55,10 @@ const plugin = {
 
     api.on('before_tool_call', createBeforeToolCallHandler(state));
     api.on('after_tool_call', createAfterToolCallHandler(state));
-    // Host-level direct sends hit message_sending; tool-originated message/sessions_send
-    // stays on before_tool_call where approval/retry support already exists.
+    // Host-level direct sends use message_sending/message_sent; tool-originated
+    // message/sessions_send keeps approval ownership on before/after_tool_call.
     api.on('message_sending', createMessageSendingHandler(state));
+    api.on('message_sent', createMessageSentHandler(state));
     api.registerHttpRoute({
       path: APPROVALS_ROUTE_PATH,
       auth: 'gateway',

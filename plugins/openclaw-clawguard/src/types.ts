@@ -89,6 +89,11 @@ export interface MessageSendingDecision {
   readonly cancel: boolean;
 }
 
+export interface MessageSentSnapshot extends MessageSendingSnapshot {
+  readonly success: boolean;
+  readonly error?: string;
+}
+
 export interface Clock {
   now(): Date;
 }

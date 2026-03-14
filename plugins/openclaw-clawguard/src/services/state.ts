@@ -13,6 +13,7 @@ import {
 import type {
   Clock,
   HookDecision,
+  MessageSentSnapshot,
   MessageSendingDecision,
   MessageSendingSnapshot,
   PendingAction,
@@ -272,6 +273,38 @@ export class ClawGuardState {
     });
 
     return { cancel: true };
+  }
+
+  public finalizeMessageSent(input: MessageSentSnapshot): void {
+    const toolName = normalizeToolName('message_sending');
+    const params = buildHostOutboundToolParams(input);
+    const actionFingerprint = fingerprintAction({
+      toolName,
+      params,
+    });
+    const artifacts = buildHostOutboundEvaluationArtifacts(input, params);
+    if (artifacts.policy_decision.decision === ResponseAction.Block) {
+      return;
+    }
+    const integrated = applyPostExecutionResultToEvaluationArtifacts(artifacts, {
+      tool_status: input.success ? ToolStatus.Completed : ToolStatus.Failed,
+      timestamp: toIsoString(this.clock.now()),
+      summary: buildHostOutboundSummary(input),
+    });
+    const finalKind = mapFinalStatusToAuditKind(integrated.audit_record.final_status);
+    if (!finalKind) {
+      return;
+    }
+
+    this.audit.record({
+      kind: finalKind,
+      detail: buildHostOutboundFinalOutcomeDetail(integrated),
+      session_key: integrated.session_ref.session_key,
+      run_id: integrated.run_ref.run_id,
+      tool_call_id: integrated.tool_call_ref.tool_call_id,
+      tool_name: integrated.tool_call_ref.tool_name,
+      action_fingerprint: actionFingerprint,
+    });
   }
 
   public finalizeAfterToolCall(input: ToolResultSnapshot): void {
@@ -541,11 +574,19 @@ function buildPendingBlockDetail(
   artifacts: EvaluationArtifacts,
   pendingActionId: string,
 ): string {
-  return `Blocked before execution and queued ${pendingActionId}. ${artifacts.policy_decision.reason}`.trim();
+  return `Blocked before execution and queued ${pendingActionId}. ${artifacts.policy_decision.reason} ${artifacts.risk_event.summary}`.trim();
 }
 
 function buildHostOutboundBlockDetail(artifacts: EvaluationArtifacts): string {
   return `Blocked host outbound delivery before channel send. ${artifacts.policy_decision.reason} ${artifacts.risk_event.summary}`.trim();
+}
+
+function buildHostOutboundSummary(input: MessageSentSnapshot): string {
+  if (!input.success) {
+    return input.error?.trim() || 'host outbound delivery failed';
+  }
+
+  return 'host outbound delivered';
 }
 
 function deriveAfterToolStatus(input: ToolResultSnapshot): ToolStatus {
@@ -612,14 +653,33 @@ function buildFinalOutcomeDetail(
   return `Final outcome ${artifacts.audit_record.final_status} after execution. ${artifacts.policy_decision.reason} ${artifacts.risk_event.summary}`.trim();
 }
 
+function buildHostOutboundFinalOutcomeDetail(
+  artifacts: ReturnType<typeof applyPostExecutionResultToEvaluationArtifacts>,
+): string {
+  return `Final outbound outcome ${artifacts.audit_record.final_status} after host delivery. ${artifacts.policy_decision.reason} ${artifacts.risk_event.summary}`.trim();
+}
+
 function buildHostOutboundEvaluationArtifacts(
-  input: MessageSendingSnapshot,
+  input: Pick<
+    MessageSendingSnapshot,
+    'to' | 'content' | 'channelId' | 'accountId' | 'conversationId' | 'metadata'
+  >,
   params: Record<string, unknown>,
 ): EvaluationArtifacts {
   const sessionKey = buildHostOutboundSessionKey(input);
   const thread = readHostOutboundThread(input.metadata);
-  const runId = createId('host-outbound-run');
-  const toolCallId = createId('host-outbound-call');
+  const toolName = 'message_sending';
+  const actionFingerprint = fingerprintAction({
+    toolName,
+    params,
+  });
+  const runId = buildHostOutboundActionId('host-outbound-run', sessionKey, toolName, actionFingerprint);
+  const toolCallId = buildHostOutboundActionId(
+    'host-outbound-call',
+    sessionKey,
+    toolName,
+    actionFingerprint,
+  );
 
   return buildOpenClawEvaluationArtifacts({
     before_tool_call: {
@@ -663,6 +723,22 @@ function buildHostOutboundSessionKey(input: MessageSendingSnapshot): string {
     normalizeSessionKeySegment(input.accountId ?? 'default'),
     normalizeSessionKeySegment(input.conversationId ?? input.to),
   ].join(':');
+}
+
+function buildHostOutboundActionId(
+  prefix: string,
+  sessionKey: string,
+  toolName: string,
+  actionFingerprint: string,
+): string {
+  const stableId = fingerprintAction({
+    toolName: `${prefix}:${toolName}`,
+    params: {
+      sessionKey,
+      actionFingerprint,
+    },
+  });
+  return `${prefix}_${stableId.slice(0, 16)}`;
 }
 
 function readHostOutboundThread(metadata: Record<string, unknown> | undefined): string | undefined {

@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { ResponseAction, matchPathRules, matchPathRulesForEvaluationInput } from '../../src/index.js';
@@ -18,8 +20,26 @@ describe('path rules', () => {
     },
     {
       paths: ['.git\\hooks\\pre-commit'],
-      rule_id: 'path.repo.metadata',
+      rule_id: 'path.repo.hooks',
       matched_value: '.git\\hooks\\pre-commit',
+      recommended_action: ResponseAction.ApproveRequired,
+    },
+    {
+      paths: ['.github\\workflows\\ci.yml'],
+      rule_id: 'path.repo.workflow',
+      matched_value: '.github\\workflows\\ci.yml',
+      recommended_action: ResponseAction.ApproveRequired,
+    },
+    {
+      paths: ['package.json'],
+      rule_id: 'path.workspace.config',
+      matched_value: 'package.json',
+      recommended_action: ResponseAction.ApproveRequired,
+    },
+    {
+      paths: ['..\\outside\\staged.ts'],
+      rule_id: 'path.workspace.escape',
+      matched_value: '..\\outside\\staged.ts',
       recommended_action: ResponseAction.ApproveRequired,
     },
     {
@@ -48,16 +68,22 @@ describe('path rules', () => {
   it('reads workspace mutation paths from evaluation input', () => {
     const matches = matchPathRulesForEvaluationInput({
       workspace_context: {
-        paths: ['src\\billing\\invoice-service.ts', '.env.local', 'C:\\Users\\alice\\.ssh\\config'],
+        paths: ['src\\billing\\invoice-service.ts', '.env.local', '.github\\workflows\\ci.yml', 'C:\\Users\\alice\\.ssh\\config'],
       },
     });
 
     expect(matches.map((match) => match.rule_id)).toEqual(
-      expect.arrayContaining(['path.critical.config', 'path.secret.material']),
+      expect.arrayContaining(['path.critical.config', 'path.secret.material', 'path.repo.workflow']),
     );
     expect(matches.map((match) => match.matched_value)).toEqual(
-      expect.arrayContaining(['.env.local', 'C:\\Users\\alice\\.ssh\\config']),
+      expect.arrayContaining(['.env.local', '.github\\workflows\\ci.yml', 'C:\\Users\\alice\\.ssh\\config']),
     );
+  });
+
+  it('does not flag absolute paths that stay inside the current workspace root as workspace escapes', () => {
+    const safeWorkspacePath = path.join(process.cwd(), 'src', 'features', 'billing', 'invoice-service.ts');
+
+    expect(matchPathRules([safeWorkspacePath])).toEqual([]);
   });
 
   it.each([

@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { normalizeOpenClawInputs } from '../../src/index.js';
 import { execFixture, outboundFixture, workspaceEditMutationFixture, workspaceMutationFixture } from '../fixtures/index.js';
 
@@ -49,6 +51,7 @@ describe('Sprint 0 input normalization', () => {
     expect(normalized.evaluation_input.workspace_context).toEqual({
       paths: workspaceMutationFixture.expected.changed_paths,
       summary: 'export const featureFlag = true;',
+      operation_type: undefined,
     });
   });
 
@@ -59,8 +62,53 @@ describe('Sprint 0 input normalization', () => {
     expect(normalized.evaluation_input.workspace_context).toEqual({
       paths: workspaceEditMutationFixture.expected.changed_paths,
       summary: 'API_KEY=prod_live_secret_value_123456789',
+      operation_type: workspaceEditMutationFixture.expected.operation_type,
     });
     expect(normalized.evaluation_input.raw_text_candidates).toEqual(workspaceEditMutationFixture.expected.raw_text_candidates);
+  });
+
+  it.each([
+    {
+      label: 'insert',
+      params: {
+        path: 'src\\generated\\feature-flags.ts',
+        oldText: '   ',
+        newText: 'featureFlag = true',
+      },
+      expectedOperationType: 'insert',
+    },
+    {
+      label: 'delete',
+      params: {
+        path: 'src\\generated\\feature-flags.ts',
+        oldText: 'featureFlag = true',
+        newText: '   ',
+      },
+      expectedOperationType: 'delete',
+    },
+    {
+      label: 'rename-like',
+      params: {
+        path: 'src\\generated\\feature-flags.ts',
+        oldText: 'legacyFeatureFlag',
+        newText: 'clawGuardFeatureFlag',
+      },
+      expectedOperationType: 'rename-like',
+    },
+  ])('classifies edit workspace mutation semantics for $label updates', ({ expectedOperationType, params }) => {
+    const normalized = normalizeOpenClawInputs({
+      before_tool_call: {
+        event: {
+          toolName: 'edit',
+          params,
+        },
+      },
+      session_policy: {
+        sessionKey: 'session-edit-semantics',
+      },
+    });
+
+    expect(normalized.evaluation_input.workspace_context?.operation_type).toBe(expectedOperationType);
   });
 
   it('extracts a single file path from apply_patch text', () => {
@@ -74,6 +122,7 @@ describe('Sprint 0 input normalization', () => {
       paths: ['src\\risk\\engine.ts'],
       summary:
         '*** Begin Patch\n*** Update File: src\\risk\\engine.ts\n@@\n-export const oldValue = 1;\n+export const oldValue = 2;\n*** End Patch',
+      operation_type: undefined,
     });
   });
 
@@ -89,6 +138,21 @@ describe('Sprint 0 input normalization', () => {
       'src\\generated\\new-file.ts',
       'src\\generated\\existing-file.ts',
       'src\\generated\\old-file.ts',
+    ]);
+  });
+
+  it('extracts patchPath and move targets into the workspace mutation path set', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patchPath: 'src\\templates\\ci-template.yml',
+        patch:
+          '*** Begin Patch\n*** Update File: src\\templates\\ci-template.yml\n*** Move to: .github\\workflows\\ci.yml\n@@\n-name: old\n+name: new\n*** End Patch\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context?.paths).toEqual([
+      'src\\templates\\ci-template.yml',
+      '.github\\workflows\\ci.yml',
     ]);
   });
 
@@ -131,12 +195,24 @@ describe('Sprint 0 input normalization', () => {
     expect(normalized.evaluation_input.workspace_context).toEqual({
       paths: [],
       summary: '*** Begin Patch\n@@\n+no headers here\n*** End Patch',
+      operation_type: undefined,
     });
+  });
+
+  it('keeps in-workspace parent traversal normalized without dropping the effective target path', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        path: path.join('src', '..', 'package.json'),
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context?.paths).toEqual([path.join('src', '..', 'package.json')]);
   });
 
   it.each([
     '.env',
     '.git\\hooks\\pre-commit',
+    '.github\\workflows\\ci.yml',
     '.ssh\\config',
     'src\\features\\billing\\invoice-service.ts',
   ])('extracts patch-only workspace paths for %s', (expectedPath) => {

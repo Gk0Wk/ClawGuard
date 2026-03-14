@@ -36,7 +36,10 @@ function runInstallDemoPack(): PackResult {
     encoding: 'utf8',
   });
 
-  return JSON.parse(stdout) as PackResult;
+  const objectStart = stdout.lastIndexOf('\n{');
+  const jsonPayload = (objectStart >= 0 ? stdout.slice(objectStart + 1) : stdout).trim();
+
+  return JSON.parse(jsonPayload) as PackResult;
 }
 
 describe('openclaw clawguard install-demo tarball surface', () => {
@@ -52,7 +55,7 @@ describe('openclaw clawguard install-demo tarball surface', () => {
       published: false,
     });
     expect(packageManifest.files).toEqual(
-      expect.arrayContaining(['src', 'openclaw.plugin.json', 'README.md']),
+      expect.arrayContaining(['dist', 'openclaw.plugin.json', 'README.md']),
     );
     expect(readme).toContain('Optional method: local tarball only');
     expect(readme).toContain('pnpm --dir plugins\\openclaw-clawguard pack');
@@ -75,7 +78,8 @@ describe('openclaw clawguard install-demo tarball surface', () => {
       expect(packedPaths).toEqual(
         expect.arrayContaining(['README.md', 'openclaw.plugin.json', 'package.json']),
       );
-      expect(packedPaths.some((entry) => entry === 'src' || entry.startsWith('src/'))).toBe(true);
+      expect(packedPaths.some((entry) => entry === 'dist' || entry.startsWith('dist/'))).toBe(true);
+      expect(packedPaths).toContain('dist/index.js');
     } finally {
       rmSync(resolvedTarballPath, { force: true });
     }

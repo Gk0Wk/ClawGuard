@@ -63,6 +63,13 @@ declare module 'openclaw/plugin-sdk/core' {
     readonly cancel?: boolean;
   }
 
+  export interface MessageSentEvent {
+    readonly to: string;
+    readonly content: string;
+    readonly success: boolean;
+    readonly error?: string;
+  }
+
   export type BeforeToolCallHandler = (
     event: BeforeToolCallEvent,
     context: BeforeToolCallContext,
@@ -77,6 +84,11 @@ declare module 'openclaw/plugin-sdk/core' {
     event: MessageSendingEvent,
     context: MessageSendingContext,
   ) => MessageSendingResult | void;
+
+  export type MessageSentHandler = (
+    event: MessageSentEvent,
+    context: MessageSendingContext,
+  ) => void;
 
   export type OpenClawRouteHandler = (
     req: IncomingMessage,
@@ -98,6 +110,7 @@ declare module 'openclaw/plugin-sdk/core' {
     on(event: 'before_tool_call', handler: BeforeToolCallHandler): void;
     on(event: 'after_tool_call', handler: AfterToolCallHandler): void;
     on(event: 'message_sending', handler: MessageSendingHandler): void;
+    on(event: 'message_sent', handler: MessageSentHandler): void;
     registerHttpRoute(route: OpenClawRouteDefinition): void;
   }
 }

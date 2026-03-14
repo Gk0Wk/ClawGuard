@@ -2,10 +2,14 @@
   "name": "@clawguard/openclaw-clawguard",
   "version": "0.0.0-demo.0",
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "exports": {
-    ".": "./src/index.ts",
+    ".": "./dist/index.js",
     "./manifest": "./openclaw.plugin.json"
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-openclaw-clawguard-plugin.mjs",
+    "prepack": "node ../../scripts/build-openclaw-clawguard-plugin.mjs"
   },
   "description": "Install-demo only ClawGuard plugin for OpenClaw. Recommended install uses the local repo path; @clawguard/openclaw-clawguard is an unpublished compatibility placeholder.",
   "license": "MIT",
@@ -17,12 +21,11 @@
     "approval"
   ],
   "files": [
-    "src",
+    "dist",
     "openclaw.plugin.json",
     "README.md"
   ],
   "peerDependencies": {
-    "clawguard": "^0.0.0",
     "openclaw": "^2026.3.9"
   },
   "openclaw": {
@@ -36,7 +39,7 @@
       "packageNamePosture": "metadata and future compatibility placeholder only"
     },
     "extensions": [
-      "./src/index.ts"
+      "./dist/index.js"
     ]
   }
 }

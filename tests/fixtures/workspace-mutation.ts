@@ -111,6 +111,7 @@ export const workspaceEditMutationFixture = {
     tool_name: 'edit',
     tool_status: ToolStatus.Running,
     type: RiskEventType.WorkspaceMutation,
+    operation_type: 'modify',
   },
   name: 'workspace edit approval example',
 } as const;

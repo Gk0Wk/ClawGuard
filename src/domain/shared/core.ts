@@ -83,6 +83,13 @@ export enum ApprovalCategory {
   Generic = 'generic',
 }
 
+export enum WorkspaceMutationOperationType {
+  Insert = 'insert',
+  Delete = 'delete',
+  Modify = 'modify',
+  RenameLike = 'rename-like',
+}
+
 export enum PolicyDecisionReasonCode {
   SessionExecPolicy = 'session_exec_policy',
   SessionSendPolicy = 'session_send_policy',

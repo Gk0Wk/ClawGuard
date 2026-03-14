@@ -58,6 +58,8 @@ function renderApprovalsPage(state: ClawGuardState): string {
           <p><strong>Status:</strong> ${escapeHtml(entry.status)}</p>
           <p><strong>Tool:</strong> ${escapeHtml(entry.tool_name)}</p>
           <p><strong>Reason:</strong> ${escapeHtml(entry.reason_summary)}</p>
+          <p><strong>Guidance:</strong> ${escapeHtml(entry.guidance_summary ?? '-')}</p>
+          <p><strong>Impact scope:</strong> ${escapeHtml(entry.impact_scope ?? '-')}</p>
           <p><strong>Expires:</strong> ${escapeHtml(entry.expires_at)}</p>
           <pre>${params}</pre>
           ${actions}

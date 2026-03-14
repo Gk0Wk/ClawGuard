@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { execSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +10,7 @@ import { ResponseAction, buildOpenClawEvaluationArtifacts } from 'clawguard';
 import plugin from '../../plugins/openclaw-clawguard/src/index.js';
 import { createAfterToolCallHandler } from '../../plugins/openclaw-clawguard/src/hooks/after-tool.js';
 import { createBeforeToolCallHandler } from '../../plugins/openclaw-clawguard/src/hooks/before-tool.js';
+import { createMessageSentHandler } from '../../plugins/openclaw-clawguard/src/hooks/message-sent.js';
 import { createMessageSendingHandler } from '../../plugins/openclaw-clawguard/src/hooks/message-sending.js';
 import { createApprovalsRoute } from '../../plugins/openclaw-clawguard/src/routes/approvals.js';
 import { createSettingsRoute } from '../../plugins/openclaw-clawguard/src/routes/settings.js';
@@ -61,6 +63,14 @@ const loadOpenClawPlugins = isOpenClawLoaderModule(loaderModule)
   ? loaderModule.loadOpenClawPlugins
   : undefined;
 const installDemoPluginRoot = path.resolve('plugins', 'openclaw-clawguard');
+
+function buildInstallDemoPlugin(): void {
+  execSync('pnpm --dir plugins/openclaw-clawguard build', {
+    cwd: path.resolve('.'),
+    stdio: 'pipe',
+    encoding: 'utf8',
+  });
+}
 
 class FakeClock implements Clock {
   private current = new Date('2026-03-12T00:00:00.000Z');
@@ -176,6 +186,46 @@ function createWorkspaceWriteEvent({
       sessionKey: 'session-workspace-write-1',
       sessionId: 'session-workspace-write-id-1',
       agentId: 'agent-workspace-write-1',
+    },
+  };
+}
+
+function createWorkspaceEditEvent({
+  path: filePath = '.env',
+  oldText = 'API_KEY=old-value',
+  newText = 'API_KEY=prod_live_secret_value_123456789',
+}: {
+  path?: string;
+  oldText?: string;
+  newText?: string;
+} = {}): {
+  event: {
+    toolName: string;
+    params: Record<string, unknown>;
+    runId: string;
+    toolCallId: string;
+  };
+  context: {
+    sessionKey: string;
+    sessionId: string;
+    agentId: string;
+  };
+} {
+  return {
+    event: {
+      toolName: 'edit',
+      params: {
+        path: filePath,
+        oldText,
+        newText,
+      },
+      runId: 'run-workspace-edit-1',
+      toolCallId: 'tool-workspace-edit-1',
+    },
+    context: {
+      sessionKey: 'session-workspace-edit-1',
+      sessionId: 'session-workspace-edit-id-1',
+      agentId: 'agent-workspace-edit-1',
     },
   };
 }
@@ -381,16 +431,16 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(packageManifest.name).toBe('@clawguard/openclaw-clawguard');
     expect(packageManifest.version).toBe('0.0.0-demo.0');
     expect(packageManifest.description).toContain('Install-demo');
-    expect(packageManifest.main).toBe('./src/index.ts');
+    expect(packageManifest.main).toBe('./dist/index.js');
     expect(packageManifest.files).toEqual(
-      expect.arrayContaining(['src', 'openclaw.plugin.json', 'README.md']),
+      expect.arrayContaining(['dist', 'openclaw.plugin.json', 'README.md']),
     );
     expect(packageManifest.exports).toMatchObject({
-      '.': './src/index.ts',
+      '.': './dist/index.js',
       './manifest': './openclaw.plugin.json',
     });
     expect(packageManifest.openclaw).toMatchObject({
-      extensions: ['./src/index.ts'],
+      extensions: ['./dist/index.js'],
       install: {
         npmSpec: '@clawguard/openclaw-clawguard',
         localPath: 'plugins/openclaw-clawguard',
@@ -401,7 +451,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         packageNamePosture: 'metadata and future compatibility placeholder only',
       },
     });
-    expect(surface).toEqual(expect.arrayContaining(['README.md', 'openclaw.plugin.json', 'src']));
+    expect(surface).toEqual(expect.arrayContaining(['README.md', 'openclaw.plugin.json', 'dist']));
 
     expect(pluginManifest).toMatchObject({
       id: 'clawguard',
@@ -433,7 +483,8 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(readme).toContain('install posture is demo-only and local-only');
     expect(readme).toContain('no registry publish should be implied');
     expect(readme).toContain('outbound coverage is still intentionally minimal');
-    expect(readme).toContain('host-level outbound coverage is currently only `message_sending` hard block');
+    expect(readme).toContain('host-level outbound now keeps hard blocks on `message_sending`');
+    expect(readme).toContain('closes allowed / failed delivery on `message_sent`');
   });
 
   it('keeps the install demo package surface and local-path install constraints explicit', () => {
@@ -453,10 +504,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       };
     };
     const resolvedLocalInstallRoot = path.resolve(packageManifest.openclaw.install.localPath);
-    const extensionEntry = path.join(installDemoPluginRoot, 'src', 'index.ts');
+    const extensionEntry = path.join(installDemoPluginRoot, 'dist', 'index.js');
 
     expect(packageManifest.files).toEqual(
-      expect.arrayContaining(['src', 'openclaw.plugin.json', 'README.md']),
+      expect.arrayContaining(['dist', 'openclaw.plugin.json', 'README.md']),
     );
     expect(packageManifest.openclaw.install).toMatchObject({
       npmSpec: '@clawguard/openclaw-clawguard',
@@ -467,8 +518,40 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       optionalMethod: 'local-tarball-only',
     });
     expect(resolvedLocalInstallRoot).toBe(installDemoPluginRoot);
+    buildInstallDemoPlugin();
     expect(existsSync(extensionEntry)).toBe(true);
-    expect(readFileSync(extensionEntry, 'utf8')).toContain("export default plugin;");
+    expect(readFileSync(extensionEntry, 'utf8')).toContain('ClawGuard demo plugin loaded.');
+  });
+
+  it('builds a self-contained dist runtime that can be imported outside the repo source tree', async () => {
+    buildInstallDemoPlugin();
+
+    const tempDir = mkdtempSync(path.join(os.tmpdir(), 'clawguard-dist-smoke-'));
+    const tempPluginRoot = path.join(tempDir, 'clawguard');
+
+    try {
+      mkdirSync(tempPluginRoot, { recursive: true });
+      cpSync(path.join(installDemoPluginRoot, 'dist'), path.join(tempPluginRoot, 'dist'), {
+        recursive: true,
+      });
+      copyFileSync(
+        path.join(installDemoPluginRoot, 'package.json'),
+        path.join(tempPluginRoot, 'package.json'),
+      );
+      copyFileSync(
+        path.join(installDemoPluginRoot, 'openclaw.plugin.json'),
+        path.join(tempPluginRoot, 'openclaw.plugin.json'),
+      );
+
+      const builtPlugin = await import(pathToFileURL(path.join(tempPluginRoot, 'dist', 'index.js')).href);
+
+      expect(builtPlugin.default).toMatchObject({
+        id: 'clawguard',
+        name: 'ClawGuard',
+      });
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 
   it('uses stable package imports and avoids repo-root source hops or process execution APIs', () => {
@@ -723,7 +806,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     const artifacts = buildCoreWorkspaceArtifacts(event, context);
 
     expect(artifacts.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
-    expect(artifacts.rule_matches.map((match) => match.rule_id)).toContain('path.repo.metadata');
+    expect(artifacts.rule_matches.map((match) => match.rule_id)).toContain('path.repo.hooks');
     expect(artifacts.approval_request).toBeDefined();
 
     const result = beforeHandler(event, context);
@@ -739,6 +822,33 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(result?.blockReason).toContain(`Reason: ${artifacts.approval_request?.reason_summary}`);
     expect(result?.blockReason).toContain(`Guidance: ${artifacts.risk_event.summary}`);
     expect(result?.blockReason).toContain(`Impact scope: ${artifacts.approval_request?.impact_scope}`);
+  });
+
+  it('keeps workflow-targeted patch moves inside the same workspace mutation approval queue', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const { event, context } = createWorkspacePatchEvent({
+      patchPath: 'src\\templates\\ci-template.yml',
+      patch: `*** Begin Patch
+*** Update File: src\\templates\\ci-template.yml
+*** Move to: .github\\workflows\\ci.yml
++name: Demo CI
+*** End Patch
+`,
+    });
+    const artifacts = buildCoreWorkspaceArtifacts(event, context);
+
+    expect(artifacts.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
+    expect(artifacts.rule_matches.map((match) => match.rule_id)).toContain('path.repo.workflow');
+    expect(artifacts.approval_request?.action_title).toBe('Approve workspace mutation');
+
+    const result = beforeHandler(event, context);
+    const pending = state.pendingActions.list()[0];
+
+    expect(result).toMatchObject({ block: true });
+    expect(pending.tool_name).toBe('apply_patch');
+    expect(pending.impact_scope).toBe('src\\templates\\ci-template.yml, .github\\workflows\\ci.yml');
+    expect(result?.blockReason).toContain('Impact scope: src\\templates\\ci-template.yml, .github\\workflows\\ci.yml');
   });
 
   it('queues a risky workspace mutation for approval and grants exactly one retry after approval', () => {
@@ -780,6 +890,40 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         'allow_once_consumed',
       ]),
     );
+  });
+
+  it('surfaces shared edit operation semantics in pending-action messaging and approvals HTML', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const route = createApprovalsRoute(state);
+    const { event, context } = createWorkspaceEditEvent({
+      path: '.env',
+      oldText: 'LEGACY_FEATURE_FLAG',
+      newText: 'CLAWGUARD_FEATURE_FLAG',
+    });
+
+    const result = beforeHandler(event, context);
+    const pending = state.pendingActions.list()[0];
+    const htmlResponse = createMockResponse();
+
+    route(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/approvals',
+      } as never,
+      htmlResponse as never,
+    );
+
+    expect(result).toMatchObject({ block: true });
+    expect(pending.tool_name).toBe('edit');
+    expect(pending.guidance_summary).toContain('rename-like');
+    expect(result?.blockReason).toContain('Guidance:');
+    expect(result?.blockReason).toContain('rename-like');
+    expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.body).toContain('Guidance:</strong>');
+    expect(htmlResponse.body).toContain('rename-like');
+    expect(htmlResponse.body).toContain('Impact scope:</strong> .env');
+    expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain('rename-like');
   });
 
   it('blocks critical workspace writes immediately without creating a pending action', () => {
@@ -895,6 +1039,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
   it('cancels direct host outbound sends when message_sending hits a hard block rule', () => {
     const state = createClawGuardState();
     const handler = createMessageSendingHandler(state);
+    const resultHandler = createMessageSentHandler(state);
     const { event, context } = createHostOutboundMessageEvent({
       content: 'leaking sk-live-1234567890abcdef to Slack',
       metadata: { threadTs: '1111.2222' },
@@ -907,6 +1052,15 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain(
       'Blocked host outbound delivery before channel send.',
     );
+    resultHandler(
+      {
+        to: event.to,
+        content: event.content,
+        success: true,
+      },
+      context,
+    );
+    expect(getAuditKinds(state).filter((kind) => kind === 'allowed')).toHaveLength(0);
   });
 
   it('does not queue approval-only host outbound matches on message_sending', () => {
@@ -1137,7 +1291,8 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(htmlResponse.body).toContain('not published');
     expect(htmlResponse.body).toContain('pnpm --dir plugins\\openclaw-clawguard pack');
     expect(htmlResponse.body).toContain('/plugins/clawguard/settings</code>, <code>/plugins/clawguard/approvals</code>, <code>/plugins/clawguard/audit');
-    expect(htmlResponse.body).toContain('message_sending hard block');
+    expect(htmlResponse.body).toContain('message_sending');
+    expect(htmlResponse.body).toContain('message_sent');
     expect(htmlResponse.body).toContain('docs/v1-installer-demo-strategy.md');
 
     const jsonResponse = createMockResponse();
@@ -1168,7 +1323,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
           '/plugins/clawguard/audit',
         ],
         limitations:
-          'Host-level outbound coverage is currently only the message_sending hard block, not the full outbound lifecycle.',
+          'Host-level outbound keeps hard blocks on message_sending and closes allowed or failed delivery on message_sent, while tool-level approvals stay on message / sessions_send.',
       },
     });
   });

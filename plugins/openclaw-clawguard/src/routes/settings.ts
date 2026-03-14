@@ -20,9 +20,9 @@ const INSTALL_DEMO = {
     '/plugins/clawguard/audit',
   ],
   coverage:
-    'Risky exec, minimal outbound, minimal workspace mutation coverage for write / edit / apply_patch actions, plus plugin-hosted approvals, audit, and settings pages.',
+    'Risky exec, minimal outbound, and workspace mutation coverage for write / edit / apply_patch actions, including alpha-safe checks for key config files, repo automation metadata, and obvious out-of-workspace writes, plus plugin-hosted approvals, audit, and settings pages.',
   limitations:
-    'Host-level outbound coverage is currently only the message_sending hard block, not the full outbound lifecycle.',
+    'Host-level outbound keeps hard blocks on message_sending and closes allowed or failed delivery on message_sent, while tool-level approvals stay on message / sessions_send.',
 };
 
 export function createSettingsRoute(state: ClawGuardState) {
