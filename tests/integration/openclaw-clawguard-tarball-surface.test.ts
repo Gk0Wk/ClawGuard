@@ -83,5 +83,5 @@ describe('openclaw clawguard install-demo tarball surface', () => {
     } finally {
       rmSync(resolvedTarballPath, { force: true });
     }
-  });
+  }, 20_000);
 });

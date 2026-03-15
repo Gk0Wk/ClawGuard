@@ -13,6 +13,7 @@ import { createBeforeToolCallHandler } from '../../plugins/openclaw-clawguard/sr
 import { createMessageSentHandler } from '../../plugins/openclaw-clawguard/src/hooks/message-sent.js';
 import { createMessageSendingHandler } from '../../plugins/openclaw-clawguard/src/hooks/message-sending.js';
 import { createApprovalsRoute } from '../../plugins/openclaw-clawguard/src/routes/approvals.js';
+import { createAuditRoute } from '../../plugins/openclaw-clawguard/src/routes/audit.js';
 import { createSettingsRoute } from '../../plugins/openclaw-clawguard/src/routes/settings.js';
 import { createClawGuardState } from '../../plugins/openclaw-clawguard/src/services/state.js';
 import type { Clock } from '../../plugins/openclaw-clawguard/src/types.js';
@@ -63,13 +64,20 @@ const loadOpenClawPlugins = isOpenClawLoaderModule(loaderModule)
   ? loaderModule.loadOpenClawPlugins
   : undefined;
 const installDemoPluginRoot = path.resolve('plugins', 'openclaw-clawguard');
+let installDemoPluginBuilt = false;
 
 function buildInstallDemoPlugin(): void {
+  if (installDemoPluginBuilt) {
+    return;
+  }
+
   execSync('pnpm --dir plugins/openclaw-clawguard build', {
     cwd: path.resolve('.'),
     stdio: 'pipe',
     encoding: 'utf8',
   });
+
+  installDemoPluginBuilt = true;
 }
 
 class FakeClock implements Clock {
@@ -538,7 +546,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     buildInstallDemoPlugin();
     expect(existsSync(extensionEntry)).toBe(true);
     expect(readFileSync(extensionEntry, 'utf8')).toContain('ClawGuard demo plugin loaded.');
-  });
+  }, 20_000);
 
   it('builds a self-contained dist runtime that can be imported outside the repo source tree', async () => {
     buildInstallDemoPlugin();
@@ -569,7 +577,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
-  });
+  }, 20_000);
 
   it('uses stable package imports and avoids repo-root source hops or process execution APIs', () => {
     const sourceFiles = listPluginSourceFiles(path.join(installDemoPluginRoot, 'src'));
@@ -1431,6 +1439,88 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         limitations:
           'Host-level outbound keeps hard blocks on message_sending and closes allowed or failed delivery on message_sent, while tool-level approvals stay on message / sessions_send.',
       },
+    });
+  });
+
+  it('serves the three-route smoke path and exposes audit entries from the fake-only approval flow', () => {
+    const state = createClawGuardState({ approvalTtlSeconds: 120 });
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const settingsRoute = createSettingsRoute(state);
+    const approvalsRoute = createApprovalsRoute(state);
+    const auditRoute = createAuditRoute(state);
+    const { event, context } = createRiskyExecEvent();
+
+    expect(beforeHandler(event, context)).toMatchObject({ block: true });
+    const pending = state.pendingActions.list()[0];
+    const createdAuditEntry = getLatestAuditByKind(state, 'pending_action_created');
+
+    expect(pending).toBeDefined();
+    expect(createdAuditEntry).toBeDefined();
+
+    const smokeRoutes = [
+      {
+        route: settingsRoute,
+        url: '/plugins/clawguard/settings',
+        expectedHeading: 'ClawGuard settings',
+      },
+      {
+        route: approvalsRoute,
+        url: '/plugins/clawguard/approvals',
+        expectedHeading: 'ClawGuard approvals',
+      },
+      {
+        route: auditRoute,
+        url: '/plugins/clawguard/audit',
+        expectedHeading: 'ClawGuard audit',
+      },
+    ];
+
+    for (const smokeRoute of smokeRoutes) {
+      const response = createMockResponse();
+      smokeRoute.route(
+        {
+          method: 'GET',
+          url: smokeRoute.url,
+        } as never,
+        response as never,
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+      expect(response.body).toContain(smokeRoute.expectedHeading);
+    }
+
+    const auditHtmlResponse = createMockResponse();
+    auditRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/audit',
+      } as never,
+      auditHtmlResponse as never,
+    );
+
+    expect(auditHtmlResponse.body).toContain('pending_action_created');
+    expect(auditHtmlResponse.body).toContain(pending.pending_action_id);
+
+    const auditJsonResponse = createMockResponse();
+    auditRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/audit?format=json',
+      } as never,
+      auditJsonResponse as never,
+    );
+
+    expect(auditJsonResponse.statusCode).toBe(200);
+    expect(auditJsonResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(JSON.parse(auditJsonResponse.body)).toMatchObject({
+      audit: expect.arrayContaining([
+        expect.objectContaining({
+          kind: createdAuditEntry?.kind,
+          tool_name: 'exec',
+          pending_action_id: pending.pending_action_id,
+        }),
+      ]),
     });
   });
 
