@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClawGuard / 龙虾卫士 BP V0.1</title>
+    <style>
+      :root {
+        --bg: #07111f;
+        --panel: #0f1c2e;
+        --panel-soft: rgba(255, 255, 255, 0.06);
+        --text: #e8eef9;
+        --muted: #9eb0ca;
+        --accent: #57c7ff;
+        --accent-2: #7c5cff;
+        --accent-3: #22c55e;
+        --danger: #fb7185;
+        --border: rgba(255, 255, 255, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-snap-type: y mandatory; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(87, 199, 255, 0.16), transparent 28%),
+          radial-gradient(circle at top right, rgba(124, 92, 255, 0.14), transparent 24%),
+          linear-gradient(180deg, #07111f 0%, #081524 100%);
+        color: var(--text);
+      }
+
+      .slide {
+        min-height: 100vh;
+        padding: 56px 72px;
+        scroll-snap-align: start;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 28px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .slide-number {
+        color: var(--accent);
+        font-size: 14px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      h1, h2 {
+        margin: 0;
+        line-height: 1.15;
+      }
+
+      h1 {
+        font-size: 56px;
+        max-width: 980px;
+      }
+
+      h2 {
+        font-size: 42px;
+        max-width: 980px;
+      }
+
+      .subtitle {
+        font-size: 22px;
+        color: var(--muted);
+        max-width: 960px;
+        line-height: 1.65;
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 24px;
+        align-items: start;
+      }
+
+      .panel {
+        background: var(--panel-soft);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 24px;
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+      }
+
+      .panel-cover {
+        margin-top: 24px;
+        max-width: 880px;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .cards-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px 18px 16px;
+      }
+
+      .card h3 {
+        margin: 0 0 10px;
+        font-size: 20px;
+      }
+
+      .card p, li, .note {
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.7;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 22px;
+      }
+
+      .quote {
+        font-size: 28px;
+        line-height: 1.5;
+        font-weight: 700;
+        color: #ffffff;
+        padding: 24px;
+        border-left: 4px solid var(--accent);
+        background: rgba(87, 199, 255, 0.08);
+        border-radius: 16px;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 14px;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 90px 1fr;
+        gap: 14px;
+        align-items: start;
+        padding: 14px 18px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: rgba(255,255,255,0.03);
+      }
+
+      .step .tag {
+        display: inline-block;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: rgba(255,255,255,0.45);
+        font-size: 14px;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .pill-row-spaced {
+        margin-bottom: 18px;
+      }
+
+      .pill {
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255,255,255,0.05);
+        color: #dbe7ff;
+        font-size: 15px;
+      }
+
+      .accent { color: var(--accent); }
+      .green { color: var(--accent-3); }
+      .pink { color: var(--danger); }
+
+      @media (max-width: 900px) {
+        .slide { padding: 32px 24px; }
+        h1 { font-size: 38px; }
+        h2 { font-size: 30px; }
+        .grid-2, .cards, .cards-3 { grid-template-columns: 1fr; }
+        .subtitle, .card p, li, .note { font-size: 16px; }
+        .quote { font-size: 22px; }
+      }
+
+      @media print {
+        html { scroll-snap-type: none; }
+        .slide { min-height: 0; page-break-after: always; }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="slide">
+      <div>
+        <div class="slide-number">01 / Cover</div>
+      </div>
+      <div>
+        <h1>ClawGuard / 龙虾卫士</h1>
+        <p class="subtitle">The antivirus for OpenClaw</p>
+        <div class="quote">拦危险动作、查 skills、堵泄密、把最后一票还给人。</div>
+        <div class="panel panel-cover">
+          <p class="note">OpenClaw 的安全控制层。我们不是做另一个 OpenClaw，而是在 OpenClaw 生态里加上一层“先解释、再审批、能阻断、可审计”的安全控制面。</p>
+        </div>
+      </div>
+      <div class="footer">
+        <span>BP V0.1 · 机会版</span>
+        <span>2026-03-15</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-number">02 / Problem</div>
+      <div class="grid-2">
+        <div>
+          <h2>OpenClaw 越火，安全控制问题越不能再留给用户自己扛</h2>
+          <p class="subtitle">OpenClaw 正快速走向普通用户与小团队，但用户面对的是新的风险结构：AI 可能被诱导、可能越权、可能泄密，而用户往往并不知道它下一步要做什么。</p>
+        </div>
+        <div class="panel">
+          <ul>
+            <li>一句群消息，可能诱导 AI 执行危险动作</li>
+            <li>用户看不清、拦不住、事后追不回</li>
+            <li>关键动作发生前，缺少明确的刹车机制</li>
+            <li>风险记录、责任链与解释权没有产品化</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer">
+        <span class="note">核心痛点</span>
+        <span>它太听话、权限太大，而用户没有控制面。</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-number">03 / Insight</div>
+      <div>
+        <h2>普通用户真正需要的，不是安全术语，而是安全感、控制感和解释权</h2>
+        <p class="subtitle">这类需求很像 PC 时代安全卫士的起点：大部分用户不懂底层安全原理，但他们需要有人告诉自己“有没有风险、风险在哪、现在该怎么办”。</p>
+      </div>
+      <div class="cards-3">
+        <div class="card"><h3>先看见</h3><p>先告诉用户现在有没有风险、风险等级是多少。</p></div>
+        <div class="card"><h3>再理解</h3><p>把复杂风险翻译成普通人能理解的语言。</p></div>
+        <div class="card"><h3>再决定</h3><p>关键动作发生前，把最终确认权交还给人。</p></div>
+      </div>
+      <div class="footer">
+        <span>时代类比</span>
+        <span>从 PC 安全卫士，到 AI Agent 安全卫士。</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-number">04 / Solution</div>
+      <div>
+        <h2>ClawGuard = OpenClaw 的安全控制层</h2>
+        <p class="subtitle">ClawGuard 面向 OpenClaw 生态，提供一套“先解释、再审批、能阻断、可审计”的安全控制能力。</p>
+      </div>
+      <div class="cards">
+        <div class="card"><h3>危险动作审批</h3><p>删除文件、外发消息、执行命令等关键动作先过人。</p></div>
+        <div class="card"><h3>风险体检与安全评分</h3><p>让用户知道当前实例的总体安全状态。</p></div>
+        <div class="card"><h3>skills 验毒</h3><p>对扩展与能力包做安装前风险判断。</p></div>
+        <div class="card"><h3>基础泄密阻断</h3><p>阻止敏感信息被外发，并保留风险解释。</p></div>
+      </div>
+      <div class="footer">
+        <span>产品价值</span>
+        <span>安全性 + 安全感 + 控制权</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-number">05 / Demo</div>
+      <div>
+        <h2>一句群消息，差点让 OpenClaw 发红包；ClawGuard 把最后一票还给了人</h2>
+        <p class="subtitle">这是项目的 north star demo，也是最容易被普通用户、媒体与合作方一眼理解的故事。</p>
+      </div>
+      <div class="timeline">
+        <div class="step"><div class="tag">Step 1</div><div class="note">群聊中出现一条诱导消息，试图让 OpenClaw 执行资金类动作。</div></div>
+        <div class="step"><div class="tag">Step 2</div><div class="note">OpenClaw 进入高风险动作准备态。</div></div>
+        <div class="step"><div class="tag">Step 3</div><div class="note">ClawGuard 在执行前识别风险、解释原因、进入审批流。</div></div>
+        <div class="step"><div class="tag">Step 4</div><div class="note">用户决定拒绝，危险动作不执行，审计页保留完整记录。</div></div>
+      </div>
+      <div class="footer">
+        <span class="note">我们要证明的不是 AI 永不犯错</span>
+        <span>而是关键动作不能黑盒发生。</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-number">06 / Why Us</div>
+      <div class="grid-2">
+        <div>
+          <h2>竞品很多，但“OpenClaw 的安全卫士”这件事还没有被真正产品化</h2>
+          <p class="subtitle">已有方案大多偏替代版、偏开发者、偏企业安全设施，而不是面向普通用户和小团队的安全控制入口。</p>
+        </div>
+        <div class="panel">
+          <ul>
+            <li>依附 OpenClaw 生态，而不是替代 OpenClaw</li>
+            <li>先面向普通用户与小团队建立安全心智</li>
+            <li>用审批 + 阻断 + 解释 + 审计形成产品闭环</li>
+            <li>以开源共建方式沉淀规则资产</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer">
+        <span>差异化</span>
+        <span>我们抢的不是单点检测能力，而是安全解释权与控制权入口。</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-number">07 / Founder</div>
+      <div class="grid-2">
+        <div>
+          <h2>由懂 AI Agent 落地的人来做 AI Agent 的安全控制层</h2>
+          <p class="subtitle">创始人具备 AI、Agent、工程架构与复杂系统推进经验，能独立完成从产品判断到系统落地的主链条工作。</p>
+        </div>
+        <div class="panel">
+          <ul>
+            <li>浙江大学计算机相关方向在读博士</li>
+            <li>长期从事人工智能、Agent 智能体与数据可视化</li>
+            <li>参与头部大模型与应用侧协作工作</li>
+            <li>曾以 CTO / 总架构师角色负责大模型项目的架构、部署、研发推进与质量管控</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer">
+        <span>团队状态</span>
+        <span>技术主导已明确，市场、法务、安全顾问资源正在连接中。</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-number">08 / Progress</div>
+      <div>
+        <h2>项目已完成最小可演示版本，正在从“概念判断”进入“产品验证”</h2>
+        <p class="subtitle">当前项目处于 first usable version / install demo 阶段：已经能演示关键价值，但仍保持开源早期与诚实边界。</p>
+      </div>
+      <div class="cards">
+        <div class="card"><h3>已完成</h3><p>项目定位、需求分析、方法论、竞品分析、北极星 demo 叙事。</p></div>
+        <div class="card"><h3>已验证</h3><p>OpenClaw 原生插件方向与最小审批 / 审计 / 设置页面闭环。</p></div>
+        <div class="card"><h3>已演示</h3><p><code>exec</code>、minimal outbound、workspace mutation 的首批演示链路。</p></div>
+        <div class="card"><h3>当前姿态</h3><p>不是 GA，不夸大发布状态，先证明价值，再扩展能力边界。</p></div>
+      </div>
+      <div class="footer">
+        <span>阶段判断</span>
+        <span class="green">已具备“第一次对外沟通”所需的产品证据。</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-number">09 / Strategy</div>
+      <div>
+        <h2>短期先用开源建立认知，长期再向规则、治理与合规能力延展</h2>
+        <p class="subtitle">项目短期更看重认知占位、规则资产与社区共建；长期可向团队版治理、规则订阅、审计与合规能力延展。</p>
+      </div>
+      <div class="cards-3">
+        <div class="card"><h3>短期</h3><p>开源、抢认知、沉淀规则、积累案例。</p></div>
+        <div class="card"><h3>中期</h3><p>连接试点用户、补强法务与安全顾问资源。</p></div>
+        <div class="card"><h3>长期</h3><p>团队策略中心、规则订阅、合规报告与企业定制。</p></div>
+      </div>
+      <div class="footer">
+        <span>核心策略</span>
+        <span>先占住 AI Agent 安全控制权入口，再谈更深商业延展。</span>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-number">10 / Ask</div>
+      <div>
+        <h2>我们现在希望连接的合作资源</h2>
+        <p class="subtitle">当前阶段最希望连接的，不只是资金，更包括能够帮助项目更快进入“规则、法务、试点、行业影响力”闭环的合作资源。</p>
+      </div>
+      <div class="panel">
+        <div class="pill-row pill-row-spaced">
+          <span class="pill">法务 / 合规顾问</span>
+          <span class="pill">安全专家</span>
+          <span class="pill">OpenClaw 生态合作</span>
+          <span class="pill">早期试点用户</span>
+          <span class="pill">传播与产业资源</span>
+        </div>
+        <p class="note">如果 OpenClaw 是 AI 普及浪潮中的超级入口，那么 ClawGuard 想做的，是这波浪潮里的安全控制层——让普通用户第一次真正拥有 AI 的控制感与安全感。</p>
+      </div>
+      <div class="footer">
+        <span>Closing</span>
+        <span class="accent">让 AI 能干活，但不能乱来。</span>
+      </div>
+    </section>
+  </body>
+</html>
