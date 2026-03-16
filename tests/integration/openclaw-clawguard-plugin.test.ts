@@ -14,6 +14,7 @@ import { createMessageSentHandler } from '../../plugins/openclaw-clawguard/src/h
 import { createMessageSendingHandler } from '../../plugins/openclaw-clawguard/src/hooks/message-sending.js';
 import { createApprovalsRoute } from '../../plugins/openclaw-clawguard/src/routes/approvals.js';
 import { createAuditRoute } from '../../plugins/openclaw-clawguard/src/routes/audit.js';
+import { createDashboardRoute } from '../../plugins/openclaw-clawguard/src/routes/dashboard.js';
 import { createSettingsRoute } from '../../plugins/openclaw-clawguard/src/routes/settings.js';
 import { createClawGuardState } from '../../plugins/openclaw-clawguard/src/services/state.js';
 import type { Clock } from '../../plugins/openclaw-clawguard/src/types.js';
@@ -501,6 +502,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(readme).toContain('pnpm --dir plugins\\openclaw-clawguard pack');
     expect(readme).toContain('How to verify the plugin loaded');
     expect(readme).toContain('Smoke path');
+    expect(readme).toContain('/plugins/clawguard/dashboard');
     expect(readme).toContain('/plugins/clawguard/settings');
     expect(readme).toContain('/plugins/clawguard/approvals');
     expect(readme).toContain('/plugins/clawguard/audit');
@@ -1404,7 +1406,8 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(htmlResponse.body).toContain('openclaw plugins install .\\plugins\\openclaw-clawguard');
     expect(htmlResponse.body).toContain('not published');
     expect(htmlResponse.body).toContain('pnpm --dir plugins\\openclaw-clawguard pack');
-    expect(htmlResponse.body).toContain('/plugins/clawguard/settings</code>, <code>/plugins/clawguard/approvals</code>, <code>/plugins/clawguard/audit');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/dashboard');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/dashboard</a>');
     expect(htmlResponse.body).toContain('message_sending');
     expect(htmlResponse.body).toContain('message_sent');
     expect(htmlResponse.body).toContain('docs/v1-installer-demo-strategy.md');
@@ -1432,9 +1435,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         optionalPackedArtifactHint: 'pnpm --dir plugins\\openclaw-clawguard pack',
         docsPath: 'docs/v1-installer-demo-strategy.md',
         smokePaths: [
-          '/plugins/clawguard/settings',
+          '/plugins/clawguard/dashboard',
           '/plugins/clawguard/approvals',
           '/plugins/clawguard/audit',
+          '/plugins/clawguard/settings',
         ],
         limitations:
           'Host-level outbound keeps hard blocks on message_sending and closes allowed or failed delivery on message_sent, while tool-level approvals stay on message / sessions_send.',
@@ -1442,9 +1446,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     });
   });
 
-  it('serves the three-route smoke path and exposes audit entries from the fake-only approval flow', () => {
+  it('serves the dashboard-centered smoke path and exposes audit entries from the fake-only approval flow', () => {
     const state = createClawGuardState({ approvalTtlSeconds: 120 });
     const beforeHandler = createBeforeToolCallHandler(state);
+    const dashboardRoute = createDashboardRoute(state);
     const settingsRoute = createSettingsRoute(state);
     const approvalsRoute = createApprovalsRoute(state);
     const auditRoute = createAuditRoute(state);
@@ -1458,6 +1463,11 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(createdAuditEntry).toBeDefined();
 
     const smokeRoutes = [
+      {
+        route: dashboardRoute,
+        url: '/plugins/clawguard/dashboard',
+        expectedHeading: 'ClawGuard dashboard',
+      },
       {
         route: settingsRoute,
         url: '/plugins/clawguard/settings',
@@ -1489,6 +1499,55 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
       expect(response.body).toContain(smokeRoute.expectedHeading);
     }
+
+    const dashboardHtmlResponse = createMockResponse();
+    dashboardRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/dashboard',
+      } as never,
+      dashboardHtmlResponse as never,
+    );
+
+    expect(dashboardHtmlResponse.body).toContain('Alpha install-demo only.');
+    expect(dashboardHtmlResponse.body).toContain('fake-only approvals, audit, and settings surfaces');
+    expect(dashboardHtmlResponse.body).toContain('should not be presented as broad outbound or workspace protection');
+    expect(dashboardHtmlResponse.body).toContain('Awaiting decision: <strong>1</strong>');
+    expect(dashboardHtmlResponse.body).toContain('Live total: <strong>1</strong>');
+    expect(dashboardHtmlResponse.body).toContain(pending.pending_action_id);
+    expect(dashboardHtmlResponse.body).toContain('pending_action_created');
+    expect(dashboardHtmlResponse.body).toContain('/plugins/clawguard/approvals');
+    expect(dashboardHtmlResponse.body).toContain('/plugins/clawguard/audit');
+    expect(dashboardHtmlResponse.body).toContain('/plugins/clawguard/settings');
+
+    const dashboardJsonResponse = createMockResponse();
+    dashboardRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/dashboard?format=json',
+      } as never,
+      dashboardJsonResponse as never,
+    );
+
+    expect(dashboardJsonResponse.statusCode).toBe(200);
+    expect(dashboardJsonResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(JSON.parse(dashboardJsonResponse.body)).toMatchObject({
+      pendingApprovals: {
+        totalLive: 1,
+        awaitingDecision: 1,
+      },
+      recentAudit: {
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'pending_action_created',
+            pending_action_id: pending.pending_action_id,
+          }),
+        ]),
+      },
+      settingsSummary: {
+        approvalTtlSeconds: 120,
+      },
+    });
 
     const auditHtmlResponse = createMockResponse();
     auditRoute(
@@ -1689,10 +1748,15 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     const auditRoute = registry.httpRoutes.find(
       (entry) => entry.pluginId === 'clawguard' && entry.path === '/plugins/clawguard/audit',
     );
+    const dashboardRoute = registry.httpRoutes.find(
+      (entry) => entry.pluginId === 'clawguard' && entry.path === '/plugins/clawguard/dashboard',
+    );
     const settingsRoute = registry.httpRoutes.find(
       (entry) => entry.pluginId === 'clawguard' && entry.path === '/plugins/clawguard/settings',
     );
 
+    expect(dashboardRoute?.auth).toBe('gateway');
+    expect(dashboardRoute?.match).toBe('exact');
     expect(approvalsRoute?.auth).toBe('gateway');
     expect(approvalsRoute?.match).toBe('prefix');
     expect(auditRoute?.auth).toBe('gateway');

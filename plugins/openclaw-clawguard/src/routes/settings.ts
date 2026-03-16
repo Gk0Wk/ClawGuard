@@ -1,34 +1,11 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ClawGuardState } from '../services/state.js';
-
-const INSTALL_DEMO = {
-  title: 'ClawGuard for OpenClaw install demo',
-  releaseStatus: 'Install demo only. Not a formal release.',
-  published: false,
-  packageName: '@clawguard/openclaw-clawguard',
-  packageNamePosture: 'Metadata and future compatibility placeholder only.',
-  recommendedMethod: 'Local path install from the repo root.',
-  recommendedCommand: 'openclaw plugins install .\\plugins\\openclaw-clawguard',
-  optionalMethod: 'Local tarball install only. No registry implication.',
-  optionalPackedArtifactHint: 'pnpm --dir plugins\\openclaw-clawguard pack',
-  readmePath: 'plugins/openclaw-clawguard/README.md',
-  docsPath: 'docs/v1-installer-demo-strategy.md',
-  reloadRequirement: 'Restart OpenClaw after install; hot reload is not assumed for the demo.',
-  smokePaths: [
-    '/plugins/clawguard/settings',
-    '/plugins/clawguard/approvals',
-    '/plugins/clawguard/audit',
-  ],
-  coverage:
-    'Risky exec, minimal outbound, and workspace mutation coverage for write / edit / apply_patch actions, including alpha-safe checks for key config files, repo automation metadata, and obvious out-of-workspace writes, plus plugin-hosted approvals, audit, and settings pages.',
-  limitations:
-    'Host-level outbound keeps hard blocks on message_sending and closes allowed or failed delivery on message_sent, while tool-level approvals stay on message / sessions_send.',
-};
+import { DASHBOARD_ROUTE_PATH, INSTALL_DEMO, SETTINGS_ROUTE_PATH, renderClawGuardNav } from './shared.js';
 
 export function createSettingsRoute(state: ClawGuardState) {
   return (req: IncomingMessage, res: ServerResponse): true | void => {
-    const url = new URL(req.url ?? '/plugins/clawguard/settings', 'http://localhost');
-    if (url.pathname !== '/plugins/clawguard/settings') {
+    const url = new URL(req.url ?? SETTINGS_ROUTE_PATH, 'http://localhost');
+    if (url.pathname !== SETTINGS_ROUTE_PATH) {
       return undefined;
     }
 
@@ -59,11 +36,8 @@ export function createSettingsRoute(state: ClawGuardState) {
   </head>
   <body>
     <h1>ClawGuard settings</h1>
-    <nav>
-      <a href="/plugins/clawguard/approvals">Approvals</a>
-      <a href="/plugins/clawguard/audit">Audit</a>
-      <a href="/plugins/clawguard/settings">Settings</a>
-    </nav>
+    <p>Start at <a href="${DASHBOARD_ROUTE_PATH}">${DASHBOARD_ROUTE_PATH}</a> for the unified Alpha overview.</p>
+    ${renderClawGuardNav(SETTINGS_ROUTE_PATH)}
     <p>Approval TTL: ${state.config.approvalTtlSeconds} seconds</p>
     <p>Pending action limit: ${state.config.pendingActionLimit}</p>
     <p>Allow-once grant limit: ${state.config.allowOnceGrantLimit}</p>

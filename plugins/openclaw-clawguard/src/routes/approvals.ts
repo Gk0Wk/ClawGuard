@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { escapeHtml } from '../utils.js';
 import type { ClawGuardState } from '../services/state.js';
+import { APPROVALS_ROUTE_PATH, renderClawGuardNav } from './shared.js';
 
 function endHtml(res: ServerResponse, statusCode: number, body: string): true {
   res.statusCode = statusCode;
@@ -43,10 +44,10 @@ function renderApprovalsPage(state: ClawGuardState): string {
       const actions =
         entry.status === 'pending'
           ? `
-            <form method="post" action="/plugins/clawguard/approvals/${escapeHtml(entry.pending_action_id)}/approve">
+            <form method="post" action="${APPROVALS_ROUTE_PATH}/${escapeHtml(entry.pending_action_id)}/approve">
               <button type="submit">Approve once</button>
             </form>
-            <form method="post" action="/plugins/clawguard/approvals/${escapeHtml(entry.pending_action_id)}/deny">
+            <form method="post" action="${APPROVALS_ROUTE_PATH}/${escapeHtml(entry.pending_action_id)}/deny">
               <button type="submit">Deny</button>
             </form>
           `
@@ -76,12 +77,8 @@ function renderApprovalsPage(state: ClawGuardState): string {
   </head>
   <body>
     <h1>ClawGuard approvals</h1>
-    <p>Review risky actions, approve once, then retry the same tool call.</p>
-    <nav>
-      <a href="/plugins/clawguard/approvals">Approvals</a>
-      <a href="/plugins/clawguard/audit">Audit</a>
-      <a href="/plugins/clawguard/settings">Settings</a>
-    </nav>
+    <p>Review risky actions, approve once, then retry the same tool call. Start at the dashboard for the install-demo overview.</p>
+    ${renderClawGuardNav(APPROVALS_ROUTE_PATH)}
     ${items || '<p>No pending actions.</p>'}
   </body>
 </html>`;
@@ -89,10 +86,10 @@ function renderApprovalsPage(state: ClawGuardState): string {
 
 export function createApprovalsRoute(state: ClawGuardState) {
   return (req: IncomingMessage, res: ServerResponse): true | void => {
-    const url = new URL(req.url ?? '/plugins/clawguard/approvals', 'http://localhost');
+    const url = new URL(req.url ?? APPROVALS_ROUTE_PATH, 'http://localhost');
     const pathname = url.pathname;
 
-    if (!pathname.startsWith('/plugins/clawguard/approvals')) {
+    if (!pathname.startsWith(APPROVALS_ROUTE_PATH)) {
       return undefined;
     }
 
@@ -124,7 +121,7 @@ export function createApprovalsRoute(state: ClawGuardState) {
         return endJson(res, 404, { error: 'Pending action not found.' });
       }
 
-      return redirect(res, '/plugins/clawguard/approvals');
+      return redirect(res, APPROVALS_ROUTE_PATH);
     }
 
     return endJson(res, 405, { error: 'Method not allowed.' });

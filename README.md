@@ -48,7 +48,7 @@ There is now a **first OpenClaw install demo** in this repository.
 The current **first usable version** should be understood modestly:
 
 - a **local install + smoke + fake-only demo package**
-- enough to show the first plugin-hosted approval / audit / settings flow
+- enough to show the first plugin-hosted dashboard / approval / audit / settings flow
 - **not** a formal release, GA claim, or mature coverage statement
 
 Today that demo covers:
@@ -56,10 +56,11 @@ Today that demo covers:
 - **risky `exec`**
 - **minimal outbound coverage**
 - **minimal workspace mutation coverage for `write` / `edit` / `apply_patch` actions**
-- **plugin-hosted approvals, audit, and settings pages** at:
-  - `/plugins/clawguard/settings`
+- **plugin-hosted dashboard, approvals, audit, and settings pages** at:
+  - `/plugins/clawguard/dashboard`
   - `/plugins/clawguard/approvals`
   - `/plugins/clawguard/audit`
+  - `/plugins/clawguard/settings`
 
 Current Control UI posture:
 
@@ -99,7 +100,12 @@ Important posture:
 - `@clawguard/openclaw-clawguard` is currently **metadata / future-compatibility naming only**,
 - and this README does **not** imply npm publish, GA, or a formal release.
 
-After install, restart OpenClaw, then use the plugin README operator runbook for the smoke path, 1-minute demo order, and 3-minute demo order.
+After install, restart OpenClaw, then use the plugin README operator runbook for the smoke path, 1-minute demo order, and 3-minute demo order. The current smoke path is:
+
+- `/plugins/clawguard/dashboard`
+- `/plugins/clawguard/approvals`
+- `/plugins/clawguard/audit`
+- `/plugins/clawguard/settings`
 
 ## Demo scenarios
 
@@ -115,7 +121,7 @@ The current public-demo-ready scenarios are intentionally narrow:
    - Risky file-change flows can enter the same approval / audit path.
    - In the current demo surface, `write` / `edit` / `apply_patch` are all explained as workspace mutation actions.
 4. **Plugin-hosted operator flow**
-   - Settings, approvals, and audit pages provide the current demo surface.
+   - Dashboard, approvals, audit, and settings pages provide the current demo surface.
 
 For storytelling, the north-star scenario remains:
 
@@ -137,8 +143,8 @@ Please read this repo with the current scope in mind:
 - **host-level outbound keeps hard blocks on `message_sending` and closes allowed / failed delivery on `message_sent`, while tool-level approvals stay on `message` / `sessions_send`; these are still two minimal fake-only review points, not full outbound lifecycle coverage**
 - **the approval loop is still a pending-action + allow-once-retry demo flow**
 - **the built-in Control UI sidebar is currently core-owned and hard-coded; there is no official plugin nav registration API for a `Security` tab yet**
-- **current UI integration therefore relies on direct plugin routes such as `/plugins/clawguard/settings`, `/plugins/clawguard/approvals`, and `/plugins/clawguard/audit`**
-- **embedded Control UI work is explicitly out of scope for this first usable version; any future embedded option would require either (a) a plugin-owned `/plugins/clawguard/dashboard` route plus a custom/patched Control UI nav item, or (b) an upstream OpenClaw plugin-nav API that does not exist today**
+- **current UI integration therefore relies on direct plugin routes such as `/plugins/clawguard/dashboard`, `/plugins/clawguard/approvals`, `/plugins/clawguard/audit`, and `/plugins/clawguard/settings`**
+- **embedded Control UI work is explicitly out of scope for this first usable version; the current dashboard is already plugin-owned at `/plugins/clawguard/dashboard`, while any future embedded option would still require either a custom/patched Control UI nav item or an upstream OpenClaw plugin-nav API that does not exist today**
 - **the demo should not be read as real dangerous execution, real transfer / red-packet execution, or full release-grade validation**
 
 ## Docs map

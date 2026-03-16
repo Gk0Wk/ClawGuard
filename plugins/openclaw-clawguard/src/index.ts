@@ -7,12 +7,15 @@ import { createMessageSentHandler } from './hooks/message-sent.js';
 import { createMessageSendingHandler } from './hooks/message-sending.js';
 import { createApprovalsRoute } from './routes/approvals.js';
 import { createAuditRoute } from './routes/audit.js';
+import { createDashboardRoute } from './routes/dashboard.js';
 import { createSettingsRoute } from './routes/settings.js';
+import {
+  APPROVALS_ROUTE_PATH,
+  AUDIT_ROUTE_PATH,
+  DASHBOARD_ROUTE_PATH,
+  SETTINGS_ROUTE_PATH,
+} from './routes/shared.js';
 import { createClawGuardState } from './services/state.js';
-
-const APPROVALS_ROUTE_PATH = '/plugins/clawguard/approvals';
-const AUDIT_ROUTE_PATH = '/plugins/clawguard/audit';
-const SETTINGS_ROUTE_PATH = '/plugins/clawguard/settings';
 
 function readApprovalTtlSeconds(pluginConfig: Record<string, unknown> | undefined): number {
   const raw = pluginConfig?.approvalTtlSeconds;
@@ -60,6 +63,12 @@ const plugin = {
     api.on('message_sending', createMessageSendingHandler(state));
     api.on('message_sent', createMessageSentHandler(state));
     api.registerHttpRoute({
+      path: DASHBOARD_ROUTE_PATH,
+      auth: 'gateway',
+      match: 'exact',
+      handler: createDashboardRoute(state),
+    });
+    api.registerHttpRoute({
       path: APPROVALS_ROUTE_PATH,
       auth: 'gateway',
       match: 'prefix',
@@ -78,7 +87,7 @@ const plugin = {
       handler: createSettingsRoute(state),
     });
 
-    api.logger.info(`ClawGuard demo plugin loaded. Visit ${SETTINGS_ROUTE_PATH} for settings and install-demo notes.`);
+    api.logger.info(`ClawGuard demo plugin loaded. Start at ${DASHBOARD_ROUTE_PATH} for the Alpha dashboard.`);
   },
 };
 
