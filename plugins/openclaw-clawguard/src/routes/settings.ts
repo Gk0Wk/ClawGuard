@@ -1,6 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ClawGuardState } from '../services/state.js';
-import { DASHBOARD_ROUTE_PATH, INSTALL_DEMO, SETTINGS_ROUTE_PATH, renderClawGuardNav } from './shared.js';
+import {
+  DASHBOARD_ROUTE_PATH,
+  INSTALL_DEMO,
+  SETTINGS_ROUTE_PATH,
+  renderClawGuardNav,
+  renderControlSurfaceIntro,
+} from './shared.js';
 
 export function createSettingsRoute(state: ClawGuardState) {
   return (req: IncomingMessage, res: ServerResponse): true | void => {
@@ -36,8 +42,9 @@ export function createSettingsRoute(state: ClawGuardState) {
   </head>
   <body>
     <h1>ClawGuard settings</h1>
-    <p>Start at <a href="${DASHBOARD_ROUTE_PATH}">${DASHBOARD_ROUTE_PATH}</a> for the unified Alpha overview.</p>
+    ${renderControlSurfaceIntro(SETTINGS_ROUTE_PATH)}
     ${renderClawGuardNav(SETTINGS_ROUTE_PATH)}
+    <p>Start at <a href="${DASHBOARD_ROUTE_PATH}">${DASHBOARD_ROUTE_PATH}</a> for the unified Alpha overview.</p>
     <p>Approval TTL: ${state.config.approvalTtlSeconds} seconds</p>
     <p>Pending action limit: ${state.config.pendingActionLimit}</p>
     <p>Allow-once grant limit: ${state.config.allowOnceGrantLimit}</p>

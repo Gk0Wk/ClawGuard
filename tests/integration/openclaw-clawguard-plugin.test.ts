@@ -1248,6 +1248,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
     expect(getResponse.statusCode).toBe(200);
     expect(getResponse.body).toContain('ClawGuard approvals');
+    expect(getResponse.body).toContain('Live queue summary');
+    expect(getResponse.body).toContain('How to read live states');
+    expect(getResponse.body).toContain('Decision needed');
+    expect(getResponse.body).toContain('What the operator can do now:');
     expect(getResponse.body).toContain(pending.pending_action_id);
 
     const approveResponse = createMockResponse();
@@ -1321,6 +1325,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
     expect(getResponse.statusCode).toBe(200);
     expect(getResponse.body).toContain('ClawGuard approvals');
+    expect(getResponse.body).toContain('Non-live states such as denied, expired, consumed, and evicted are not shown in this queue.');
     expect(getResponse.body).toContain(deniedPending.pending_action_id);
 
     const denyResponse = createMockResponse();
@@ -1390,6 +1395,80 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(getAuditKinds(state).filter((kind) => kind === 'invalid_transition').length).toBe(3);
     expect(getAuditKinds(state)).toContain('expired');
+  });
+
+  it('exposes approval queue aggregation and live-state guidance in JSON and HTML modes', () => {
+    const state = createClawGuardState({ approvalTtlSeconds: 45 });
+    const handler = createBeforeToolCallHandler(state);
+    const route = createApprovalsRoute(state);
+
+    const exec = createRiskyExecEvent('rm -rf temp');
+    handler(exec.event, exec.context);
+    const pending = state.pendingActions.list()[0];
+    state.approvePendingAction(pending.pending_action_id);
+
+    const message = createOutboundEvent({
+      to: 'public-room',
+      message: 'Authorization: Bearer github_pat_1234567890_abcdefghijklmnopqrstuvwxyz',
+    });
+    handler(message.event, message.context);
+
+    const htmlResponse = createMockResponse();
+    route(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/approvals',
+      } as never,
+      htmlResponse as never,
+    );
+
+    expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.body).toContain('Approved, waiting for one retry');
+    expect(htmlResponse.body).toContain('Current boundary:</strong> This live item already has its one approval.');
+    expect(htmlResponse.body).toContain('Deny and keep blocked');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/dashboard');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/checkup');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/audit');
+
+    const jsonResponse = createMockResponse();
+    route(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/approvals?format=json',
+      } as never,
+      jsonResponse as never,
+    );
+
+    expect(jsonResponse.statusCode).toBe(200);
+    expect(jsonResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(JSON.parse(jsonResponse.body)).toMatchObject({
+      summary: {
+        totalLive: 2,
+        pending: 1,
+        approvedWaitingRetry: 1,
+        approvalTtlSeconds: 45,
+        installDemo: {
+          published: false,
+        },
+        relationships: {
+          dashboard: '/plugins/clawguard/dashboard',
+          checkup: '/plugins/clawguard/checkup',
+          approvals: '/plugins/clawguard/approvals',
+          audit: '/plugins/clawguard/audit',
+        },
+        hiddenTerminalStates: ['denied', 'expired', 'consumed', 'evicted'],
+      },
+      stateGuide: [
+        {
+          state: 'pending',
+          title: 'Decision needed',
+        },
+        {
+          state: 'approved_waiting_retry',
+          title: 'Approved, waiting for one retry',
+        },
+      ],
+    });
   });
 
   it('serves install-demo metadata from the settings route in both HTML and JSON modes', () => {
@@ -1471,28 +1550,35 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         route: dashboardRoute,
         url: '/plugins/clawguard/dashboard',
         expectedHeading: 'ClawGuard dashboard',
+        navLabel: 'Dashboard',
       },
       {
         route: checkupRoute,
         url: '/plugins/clawguard/checkup',
         expectedHeading: 'ClawGuard safety checkup',
-      },
-      {
-        route: settingsRoute,
-        url: '/plugins/clawguard/settings',
-        expectedHeading: 'ClawGuard settings',
+        navLabel: 'Checkup',
       },
       {
         route: approvalsRoute,
         url: '/plugins/clawguard/approvals',
         expectedHeading: 'ClawGuard approvals',
+        navLabel: 'Approvals',
       },
       {
         route: auditRoute,
         url: '/plugins/clawguard/audit',
         expectedHeading: 'ClawGuard audit',
+        navLabel: 'Audit',
+      },
+      {
+        route: settingsRoute,
+        url: '/plugins/clawguard/settings',
+        expectedHeading: 'ClawGuard settings',
+        navLabel: 'Settings',
       },
     ];
+    const smokePathUrls = smokeRoutes.map((smokeRoute) => smokeRoute.url);
+    const smokeBodies = new Map<string, string>();
 
     for (const smokeRoute of smokeRoutes) {
       const response = createMockResponse();
@@ -1507,7 +1593,63 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
       expect(response.body).toContain(smokeRoute.expectedHeading);
+      smokeBodies.set(smokeRoute.url, response.body);
     }
+
+    for (const smokeRoute of smokeRoutes) {
+      const body = smokeBodies.get(smokeRoute.url);
+      expect(body).toBeDefined();
+      if (!body) {
+        throw new Error(`Missing smoke body for ${smokeRoute.url}`);
+      }
+
+      for (const navRoute of smokeRoutes) {
+        if (navRoute.url === smokeRoute.url) {
+          expect(body).toContain(navRoute.navLabel);
+          expect(body).not.toContain(`<a href="${navRoute.url}">${navRoute.navLabel}</a>`);
+          continue;
+        }
+
+        expect(body).toContain(`<a href="${navRoute.url}">${navRoute.navLabel}</a>`);
+      }
+    }
+
+    const approvalsHtml = smokeBodies.get('/plugins/clawguard/approvals');
+    expect(approvalsHtml).toContain('Approvals = action');
+    expect(approvalsHtml).toContain('/plugins/clawguard/dashboard');
+    expect(approvalsHtml).toContain('/plugins/clawguard/checkup');
+    expect(approvalsHtml).toContain('/plugins/clawguard/audit');
+    const settingsHtml = smokeBodies.get('/plugins/clawguard/settings');
+    expect(settingsHtml).toContain('/plugins/clawguard/dashboard');
+    expect(settingsHtml).toContain('Alpha overview');
+    for (const smokePathUrl of smokePathUrls) {
+      expect(settingsHtml).toContain(smokePathUrl);
+    }
+
+    const settingsJsonResponse = createMockResponse();
+    settingsRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/settings?format=json',
+      } as never,
+      settingsJsonResponse as never,
+    );
+
+    expect(settingsJsonResponse.statusCode).toBe(200);
+    expect(settingsJsonResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    type SettingsRoutePayload = {
+      installDemo: {
+        releaseStatus: string;
+        demoPosture: string;
+        navigationPosture: string;
+        smokePaths: string[];
+      };
+    };
+    const settingsPayload = JSON.parse(settingsJsonResponse.body) as SettingsRoutePayload;
+    expect([...settingsPayload.installDemo.smokePaths].sort()).toEqual([...smokePathUrls].sort());
+    expect(settingsPayload.installDemo.releaseStatus).toBe('Install demo only. Not a formal release.');
+    expect(settingsPayload.installDemo.demoPosture).toContain('plugin-owned page');
+    expect(settingsPayload.installDemo.navigationPosture).toContain('no stock Control UI Security tab');
 
     const dashboardHtmlResponse = createMockResponse();
     dashboardRoute(
@@ -1518,9 +1660,19 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       dashboardHtmlResponse as never,
     );
 
-    expect(dashboardHtmlResponse.body).toContain('Alpha install-demo only.');
-    expect(dashboardHtmlResponse.body).toContain('fake-only approvals, audit, and settings surfaces');
-    expect(dashboardHtmlResponse.body).toContain('should not be presented as broad outbound or workspace protection');
+    expect(dashboardHtmlResponse.body).toContain(
+      'Alpha control surface only. Plugin-owned, install-demo only, unpublished, fake-only, and not a stock Control UI Security tab.',
+    );
+    expect(dashboardHtmlResponse.body).toContain('Dashboard = status');
+    expect(dashboardHtmlResponse.body).toContain(
+      'Then use Checkup for explanation, Approvals for action, and Audit for replay.',
+    );
+    expect(dashboardHtmlResponse.body).toContain(
+      'These pages reorganize the same bounded approval, posture, and audit signals only.',
+    );
+    expect(dashboardHtmlResponse.body).toContain(
+      'Alpha install-demo only. Unpublished and fake-only. This remains a plugin-owned page rather than a stock Control UI Security tab.',
+    );
     expect(dashboardHtmlResponse.body).toContain('Am I safe right now?');
     expect(dashboardHtmlResponse.body).toContain('<strong>Urgent</strong>');
     expect(dashboardHtmlResponse.body).toContain('<strong>1/4</strong> lightweight dashboard checks are passing.');
@@ -1789,6 +1941,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     });
     expect(dashboardPayload.checkup.items).toHaveLength(4);
     expect(dashboardPayload.safetyStatus.checks).toHaveLength(dashboardPayload.checkup.items.length);
+    for (const action of dashboardPayload.quickActions) {
+      expect(settingsPayload.installDemo.smokePaths).toContain(action.href);
+    }
     for (const item of dashboardPayload.checkup.items) {
       const action = quickActionsById.get(item.recommendedAction.actionId);
       expect(action).toBeDefined();
@@ -1833,8 +1988,13 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(checkupHtmlResponse.statusCode).toBe(200);
     expect(checkupHtmlResponse.body).toContain('ClawGuard safety checkup');
-    expect(checkupHtmlResponse.body).toContain('install-demo only, unpublished, fake-only, and plugin-owned');
-    expect(checkupHtmlResponse.body).toContain('does not imply a stock Control UI Security tab');
+    expect(checkupHtmlResponse.body).toContain(
+      'Alpha control surface only. Plugin-owned, install-demo only, unpublished, fake-only, and not a stock Control UI Security tab.',
+    );
+    expect(checkupHtmlResponse.body).toContain('Checkup = explanation');
+    expect(checkupHtmlResponse.body).toContain(
+      'There is no stock Control UI Security tab for this alpha, and ClawGuard does not depend on a patched nav hack.',
+    );
     expect(checkupHtmlResponse.body).toContain('/plugins/clawguard/dashboard');
     expect(checkupHtmlResponse.body).toContain('Top status summary');
     expect(checkupHtmlResponse.body).toContain('Main drag and fix first');
@@ -1892,21 +2052,71 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       auditHtmlResponse as never,
     );
 
+    expect(auditHtmlResponse.statusCode).toBe(200);
+    expect(auditHtmlResponse.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(auditHtmlResponse.body).toContain('pending_action_created');
     expect(auditHtmlResponse.body).toContain(pending.pending_action_id);
+    expect(auditHtmlResponse.body).toContain('ClawGuard audit timeline');
+    expect(auditHtmlResponse.body).toContain('Dashboard');
+    expect(auditHtmlResponse.body).toContain('Checkup');
+    expect(auditHtmlResponse.body).toContain('Approvals');
+    expect(auditHtmlResponse.body).toContain('/plugins/clawguard/dashboard');
+    expect(auditHtmlResponse.body).toContain('/plugins/clawguard/checkup');
+    expect(auditHtmlResponse.body).toContain('/plugins/clawguard/approvals');
+    expect(auditHtmlResponse.body).toContain(
+      'Alpha control surface only. Plugin-owned, install-demo only, unpublished, fake-only, and not a stock Control UI Security tab.',
+    );
+    expect(auditHtmlResponse.body).toContain('Audit = replay');
+    expect(auditHtmlResponse.body).toContain('Replay the fake-only audit entries ClawGuard already captured.');
+    expect(auditHtmlResponse.body).toContain('How to read this replay');
+    expect(auditHtmlResponse.body).toContain('Timeline replay');
+    expect(auditHtmlResponse.body).toContain('Replay flow');
+    expect(auditHtmlResponse.body).toContain('Trail size');
+    expect(auditHtmlResponse.body).toContain('Human decisions');
+    expect(auditHtmlResponse.body).toContain('Final outcomes');
+    expect(auditHtmlResponse.body).toContain('They do not add new hooks, new runtime capture, or new audit persistence.');
+    expect(auditHtmlResponse.body).toContain('User approved the action');
+    expect(auditHtmlResponse.body).toContain('User denied the action');
+    expect(auditHtmlResponse.body).toContain('One retry token issued');
+    expect(auditHtmlResponse.body).toContain('One retry token consumed');
+    expect(auditHtmlResponse.body).toContain('Action completed as allowed');
+    expect(auditHtmlResponse.body).toContain('Action was blocked');
+    expect(auditHtmlResponse.body).toContain('Action failed after being allowed to run');
+    expect(auditHtmlResponse.body).toContain(
+      'ClawGuard opened a human review checkpoint because this action was too risky to continue automatically.',
+    );
+    expect(auditHtmlResponse.body).toContain(
+      'A person explicitly said no, so ClawGuard kept the risky action from moving forward.',
+    );
+    expect(auditHtmlResponse.body).toContain(
+      'ClawGuard let the action proceed, but the tool or delivery still failed afterward.',
+    );
+    expect(auditHtmlResponse.body).toContain('Risk / decision:');
+    expect(auditHtmlResponse.body).toContain('System did:');
+    expect(auditHtmlResponse.body).toContain('User decision:');
+    expect(auditHtmlResponse.body).toContain('Final outcome:');
+    expect(auditHtmlResponse.body).toContain('Waiting for a human decision.');
+    expect(auditHtmlResponse.body).toContain('Queued the action for review and saved the pending action ID for replay.');
+    expect(auditHtmlResponse.body).toContain('Signal only. Look at later entries for the ending.');
 
     const auditJsonResponse = createMockResponse();
     auditRoute(
       {
         method: 'GET',
         url: '/plugins/clawguard/audit?format=json',
-      } as never,
-      auditJsonResponse as never,
-    );
+        } as never,
+        auditJsonResponse as never,
+      );
 
     expect(auditJsonResponse.statusCode).toBe(200);
     expect(auditJsonResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
-    expect(JSON.parse(auditJsonResponse.body)).toMatchObject({
+    type AuditRoutePayload = {
+      timeline: {
+        relationships: Record<string, string>;
+      };
+    };
+    const auditPayload = JSON.parse(auditJsonResponse.body) as AuditRoutePayload;
+    expect(auditPayload).toMatchObject({
       audit: expect.arrayContaining([
         expect.objectContaining({
           kind: createdAuditEntry?.kind,
@@ -1914,7 +2124,198 @@ describe('OpenClaw ClawGuard plugin spike', () => {
           pending_action_id: pending.pending_action_id,
         }),
       ]),
+      timeline: {
+        relationships: {
+          dashboard: '/plugins/clawguard/dashboard',
+          checkup: '/plugins/clawguard/checkup',
+          approvals: '/plugins/clawguard/approvals',
+          audit: '/plugins/clawguard/audit',
+        },
+        posture: {
+          demoPosture: expect.stringContaining('fake-only'),
+          navigationPosture: expect.stringContaining('no stock Control UI Security tab'),
+        },
+        summary: expect.objectContaining({
+          totalEntries: state.audit.list().length,
+          totalFlows: expect.any(Number),
+          pendingApprovalFlows: expect.any(Number),
+          blockedFlows: expect.any(Number),
+        }),
+        kindGuide: expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'pending_action_created',
+            title: 'Approval checkpoint created',
+            explanation:
+              'ClawGuard opened a human review checkpoint because this action was too risky to continue automatically.',
+            userDecision: 'Waiting for a human decision.',
+            finalOutcome: 'Not final yet. The action is paused until approved, denied, or expired.',
+          }),
+          expect.objectContaining({
+            kind: 'approved',
+            title: 'User approved the action',
+          }),
+          expect.objectContaining({
+            kind: 'denied',
+            title: 'User denied the action',
+          }),
+          expect.objectContaining({
+            kind: 'allow_once_issued',
+            title: 'One retry token issued',
+          }),
+          expect.objectContaining({
+            kind: 'allow_once_consumed',
+            title: 'One retry token consumed',
+          }),
+          expect.objectContaining({
+            kind: 'allowed',
+            title: 'Action completed as allowed',
+          }),
+          expect.objectContaining({
+            kind: 'blocked',
+            title: 'Action was blocked',
+            explanation:
+              'ClawGuard stopped the action before completion, either immediately or as the final blocked result.',
+            finalOutcome: 'Blocked.',
+          }),
+          expect.objectContaining({
+            kind: 'failed',
+            title: 'Action failed after being allowed to run',
+            explanation:
+              'ClawGuard let the action proceed, but the tool or delivery still failed afterward.',
+            systemAction:
+              'Captured the final failure so the replay shows that approval did not equal success.',
+          }),
+        ]),
+        flows: expect.arrayContaining([
+          expect.objectContaining({
+            pendingActionId: pending.pending_action_id,
+            riskDecision: 'Approval required',
+            userDecision: 'Waiting for decision',
+            finalOutcome: 'Blocked',
+          }),
+        ]),
+      },
     });
+    for (const relationshipHref of Object.values(auditPayload.timeline.relationships)) {
+      expect(settingsPayload.installDemo.smokePaths).toContain(relationshipHref);
+    }
+  });
+
+  it('groups audit entries into replay flows that show approval decisions and final outcomes', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const afterHandler = createAfterToolCallHandler(state);
+    const auditRoute = createAuditRoute(state);
+    const riskyExec = createRiskyExecEvent();
+    const deniedExec = createRiskyExecEvent('rm -rf archive');
+
+    expect(beforeHandler(riskyExec.event, riskyExec.context)).toMatchObject({ block: true });
+    const approvedPending = state.pendingActions.list()[0];
+    state.approvePendingAction(approvedPending.pending_action_id);
+    expect(beforeHandler(riskyExec.event, riskyExec.context)).toBeUndefined();
+    afterHandler(
+      {
+        ...riskyExec.event,
+        result: {
+          exitCode: 0,
+        },
+      },
+      riskyExec.context,
+    );
+
+    expect(beforeHandler(deniedExec.event, deniedExec.context)).toMatchObject({ block: true });
+    const deniedPending = state.pendingActions.list().find(
+      (entry) => entry.pending_action_id !== approvedPending.pending_action_id,
+    );
+
+    expect(deniedPending).toBeDefined();
+    if (!deniedPending) {
+      throw new Error('Expected a second pending action for denial flow.');
+    }
+
+    state.denyPendingAction(deniedPending.pending_action_id);
+
+    const htmlResponse = createMockResponse();
+    auditRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/audit',
+      } as never,
+      htmlResponse as never,
+    );
+
+    expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(htmlResponse.body).toContain(approvedPending.pending_action_id);
+    expect(htmlResponse.body).toContain(deniedPending.pending_action_id);
+    expect(htmlResponse.body).toContain('exec replay for pending approval');
+    expect(htmlResponse.body).toContain('Approved');
+    expect(htmlResponse.body).toContain('Denied');
+    expect(htmlResponse.body).toContain('Allowed');
+    expect(htmlResponse.body).toContain('Blocked by human decision.');
+    expect(htmlResponse.body).toContain('Spent the one approved retry and let the matching action continue.');
+    expect(htmlResponse.body).toContain('Recorded the final allowed outcome for the replay trail.');
+    expect(htmlResponse.body).toContain('Blocked by human decision');
+
+    const jsonResponse = createMockResponse();
+    auditRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/audit?format=json',
+      } as never,
+      jsonResponse as never,
+    );
+
+    const auditPayload = JSON.parse(jsonResponse.body) as {
+      timeline: {
+        summary: {
+          approvedFlows: number;
+          deniedFlows: number;
+          allowedFlows: number;
+          blockedFlows: number;
+        };
+        flows: Array<{
+          pendingActionId?: string;
+          userDecision: string;
+          finalOutcome: string;
+          systemAction: string;
+          events: Array<{ kind: string }>;
+        }>;
+      };
+    };
+
+    expect(auditPayload.timeline.summary).toMatchObject({
+      approvedFlows: 1,
+      deniedFlows: 1,
+      allowedFlows: 1,
+      blockedFlows: 1,
+    });
+    expect(auditPayload.timeline.flows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pendingActionId: approvedPending.pending_action_id,
+          userDecision: 'Approved',
+          finalOutcome: 'Allowed',
+          systemAction: 'Spent the one approved retry and let the matching action continue.',
+          events: expect.arrayContaining([
+            expect.objectContaining({ kind: 'pending_action_created' }),
+            expect.objectContaining({ kind: 'approved' }),
+            expect.objectContaining({ kind: 'allow_once_issued' }),
+            expect.objectContaining({ kind: 'allow_once_consumed' }),
+            expect.objectContaining({ kind: 'allowed' }),
+          ]),
+        }),
+        expect.objectContaining({
+          pendingActionId: deniedPending.pending_action_id,
+          userDecision: 'Denied',
+          finalOutcome: 'Blocked',
+          events: expect.arrayContaining([
+            expect.objectContaining({ kind: 'pending_action_created' }),
+            expect.objectContaining({ kind: 'denied' }),
+          ]),
+        }),
+      ]),
+    );
   });
 
   it('persists only live state and restores it from the OpenClaw-safe snapshot path', () => {

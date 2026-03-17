@@ -48,7 +48,7 @@ There is now a **first OpenClaw install demo** in this repository.
 The current **first usable version** should be understood modestly:
 
 - a **local install + smoke + fake-only demo package**
-- enough to show the first plugin-hosted dashboard / checkup / approval / audit / settings flow
+- enough to show the first plugin-hosted dashboard / checkup / approvals / audit / settings flow
 - **not** a formal release, GA claim, or mature coverage statement
 
 Today that demo covers:

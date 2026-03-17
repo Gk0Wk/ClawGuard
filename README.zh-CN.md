@@ -36,7 +36,7 @@
 当前这版 **first usable version（首个可用版）** 应被克制地理解为：
 
 - 一条 **本地安装 + 页面 smoke + fake-only 演示** 的最小包
-- 足以讲清首个插件自带 dashboard / checkup / approvals / audit / settings 闭环
+- 足以讲清当前插件自带 control surface：dashboard → checkup → approvals → audit → settings
 - **不是**正式 release、不是 GA，也不是成熟覆盖声明
 
 当前 demo 覆盖范围是：

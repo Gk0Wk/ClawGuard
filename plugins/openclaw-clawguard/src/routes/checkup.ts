@@ -7,6 +7,8 @@ import {
   DASHBOARD_ROUTE_PATH,
   INSTALL_DEMO,
   renderClawGuardNav,
+  renderControlSurfaceIntro,
+  renderInstallDemoPostureNote,
 } from './shared.js';
 
 function renderEvidenceValue(value: unknown): string {
@@ -70,9 +72,10 @@ function renderCheckupPage(state: ClawGuardState): string {
   </head>
   <body>
     <h1>ClawGuard safety checkup</h1>
-    <p><strong>${INSTALL_DEMO.demoPosture}</strong> ${INSTALL_DEMO.navigationPosture} This deeper page stays install-demo only, unpublished, fake-only, and plugin-owned. It does not imply a stock Control UI Security tab, a patched nav hack, or broader runtime capture.</p>
-    <p>Use <a href="${DASHBOARD_ROUTE_PATH}">${DASHBOARD_ROUTE_PATH}</a> for the Alpha safety homepage, then come here for the deeper explanation of the same read-only posture/checkup aggregation.</p>
+    ${renderControlSurfaceIntro(CHECKUP_ROUTE_PATH)}
     ${renderClawGuardNav(CHECKUP_ROUTE_PATH)}
+    ${renderInstallDemoPostureNote()}
+    <p>Use <a href="${DASHBOARD_ROUTE_PATH}">${DASHBOARD_ROUTE_PATH}</a> for the Alpha status view, then come here for the deeper explanation of the same read-only posture aggregation.</p>
     <section>
       <h2>Top status summary</h2>
       <p><strong>${escapeHtml(payload.safetyStatus.label)}</strong> — ${escapeHtml(payload.safetyStatus.summary)}</p>
@@ -89,7 +92,7 @@ function renderCheckupPage(state: ClawGuardState): string {
     </section>
     <section>
       <h2>All checkup items</h2>
-      <p>This page reuses the same UI-facing posture/checkup aggregation as the dashboard and expands it with item-level evidence.</p>
+      <p>This page reuses the same UI-facing posture/checkup aggregation as the dashboard and expands it with item-level evidence. When an item needs a decision, continue to Approvals; when it needs a trail, continue to Audit.</p>
       ${checkupItems}
     </section>
     <section>

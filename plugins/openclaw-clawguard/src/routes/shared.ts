@@ -4,6 +4,13 @@ export const APPROVALS_ROUTE_PATH = '/plugins/clawguard/approvals';
 export const AUDIT_ROUTE_PATH = '/plugins/clawguard/audit';
 export const SETTINGS_ROUTE_PATH = '/plugins/clawguard/settings';
 
+type ControlSurfacePage = {
+  readonly href: string;
+  readonly label: string;
+  readonly role: string;
+  readonly intro: string;
+};
+
 export const INSTALL_DEMO = {
   title: 'ClawGuard for OpenClaw install demo',
   releaseStatus: 'Install demo only. Not a formal release.',
@@ -34,20 +41,75 @@ export const INSTALL_DEMO = {
     'There is no stock Control UI Security tab for this alpha, and ClawGuard does not depend on a patched nav hack.',
 } as const;
 
-const NAV_ITEMS = [
-  { href: DASHBOARD_ROUTE_PATH, label: 'Dashboard' },
-  { href: CHECKUP_ROUTE_PATH, label: 'Checkup' },
-  { href: APPROVALS_ROUTE_PATH, label: 'Approvals' },
-  { href: AUDIT_ROUTE_PATH, label: 'Audit' },
-  { href: SETTINGS_ROUTE_PATH, label: 'Settings' },
+const CONTROL_SURFACE_POSTURE =
+  'Alpha control surface only. Plugin-owned, install-demo only, unpublished, fake-only, and not a stock Control UI Security tab.';
+const CONTROL_SURFACE_SCOPE =
+  'These pages reorganize the same bounded approval, posture, and audit signals only. They do not add new hooks, broader outbound coverage, or extra workspace capture.';
+const CONTROL_SURFACE_RELATIONSHIP =
+  'Dashboard = status · Checkup = explanation · Approvals = action · Audit = replay.';
+
+const NAV_ITEMS: readonly ControlSurfacePage[] = [
+  {
+    href: DASHBOARD_ROUTE_PATH,
+    label: 'Dashboard',
+    role: 'status',
+    intro:
+      'Start here for the current Alpha status, the main drag, and the first fix. Then use Checkup for explanation, Approvals for action, and Audit for replay.',
+  },
+  {
+    href: CHECKUP_ROUTE_PATH,
+    label: 'Checkup',
+    role: 'explanation',
+    intro:
+      'Use this page to explain why the current status looks the way it does. Dashboard gives the summary, Approvals handles the live decision, and Audit shows the replay.',
+  },
+  {
+    href: APPROVALS_ROUTE_PATH,
+    label: 'Approvals',
+    role: 'action',
+    intro:
+      'Use this page to take the live approve-or-deny action on risky requests. Dashboard shows the current status, Checkup explains the posture, and Audit replays what happened afterward.',
+  },
+  {
+    href: AUDIT_ROUTE_PATH,
+    label: 'Audit',
+    role: 'replay',
+    intro:
+      'Use this page to replay how a risky flow unfolded over time. Dashboard shows the current status, Checkup explains why, and Approvals is where the human action happens.',
+  },
+  {
+    href: SETTINGS_ROUTE_PATH,
+    label: 'Settings',
+    role: 'limits',
+    intro:
+      'Use this page to inspect install-demo limits and metadata without changing the control-surface scope.',
+  },
 ] as const;
 
-export function renderClawGuardNav(currentPath: string): string {
-  const links = NAV_ITEMS.map((item) =>
-    item.href === currentPath
-      ? `<strong>${item.label}</strong>`
-      : `<a href="${item.href}">${item.label}</a>`,
-  ).join(' ');
+function getControlSurfacePage(currentPath: string): ControlSurfacePage {
+  return NAV_ITEMS.find((item) => item.href === currentPath) ?? NAV_ITEMS[0];
+}
 
-  return `<nav>${links}</nav>`;
+export function renderControlSurfaceIntro(currentPath: string): string {
+  const page = getControlSurfacePage(currentPath);
+
+  return `<p><strong>${CONTROL_SURFACE_POSTURE}</strong> ${CONTROL_SURFACE_SCOPE}</p>
+<p><strong>${page.label} = ${page.role}</strong>. ${page.intro}</p>`;
+}
+
+export function renderClawGuardNav(currentPath: string): string {
+  const pageLinks = NAV_ITEMS.map((item) =>
+    item.href === currentPath
+      ? `<strong>${item.label}</strong> <small aria-current="page">${item.role}</small>`
+      : `<a href="${item.href}">${item.label}</a> <small>${item.role}</small>`,
+  ).join(' · ');
+
+  return `<nav aria-label="ClawGuard alpha control surface">
+<p><strong>Alpha control surface</strong> — ${CONTROL_SURFACE_RELATIONSHIP}</p>
+<p>${pageLinks}</p>
+</nav>`;
+}
+
+export function renderInstallDemoPostureNote(): string {
+  return `<p><strong>${INSTALL_DEMO.demoPosture}</strong> ${INSTALL_DEMO.navigationPosture}</p>`;
 }

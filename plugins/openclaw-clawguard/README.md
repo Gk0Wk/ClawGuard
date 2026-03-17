@@ -68,9 +68,9 @@ That means the current demo should be verified by opening the plugin-owned route
 
 - `/plugins/clawguard/dashboard`
 - `/plugins/clawguard/checkup`
-- `/plugins/clawguard/settings`
 - `/plugins/clawguard/approvals`
 - `/plugins/clawguard/audit`
+- `/plugins/clawguard/settings`
 
 The current Alpha choice is to keep a plugin-owned dashboard instead of adding a stock or patched Control UI `Security` tab. Any future embedded experience still depends on upstream plugin-navigation support rather than a nav hack.
 
@@ -78,9 +78,9 @@ The current Alpha choice is to keep a plugin-owned dashboard instead of adding a
 
 - `/plugins/clawguard/dashboard`
 - `/plugins/clawguard/checkup`
-- `/plugins/clawguard/settings`
 - `/plugins/clawguard/approvals`
 - `/plugins/clawguard/audit`
+- `/plugins/clawguard/settings`
 
 ## Operator runbook (public demo / local demo)
 

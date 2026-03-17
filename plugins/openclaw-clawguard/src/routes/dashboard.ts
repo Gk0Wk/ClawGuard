@@ -7,9 +7,11 @@ import {
   AUDIT_ROUTE_PATH,
   CHECKUP_ROUTE_PATH,
   DASHBOARD_ROUTE_PATH,
-  INSTALL_DEMO,
   SETTINGS_ROUTE_PATH,
   renderClawGuardNav,
+  renderControlSurfaceIntro,
+  renderInstallDemoPostureNote,
+  INSTALL_DEMO,
 } from './shared.js';
 
 const PENDING_OVERVIEW_LIMIT = 5;
@@ -372,8 +374,9 @@ function renderDashboardPage(state: ClawGuardState): string {
   </head>
   <body>
     <h1>ClawGuard dashboard</h1>
-    <p><strong>${INSTALL_DEMO.demoPosture}</strong> This plugin-owned page is the unified entry point for the current fake-only approvals, audit, and settings surfaces. It is local-install only and should not be presented as broad outbound or workspace protection.</p>
+    ${renderControlSurfaceIntro(DASHBOARD_ROUTE_PATH)}
     ${renderClawGuardNav(DASHBOARD_ROUTE_PATH)}
+    ${renderInstallDemoPostureNote()}
     <section>
       <h2>Am I safe right now?</h2>
       <p><strong>${escapeHtml(payload.safetyStatus.label)}</strong> — ${escapeHtml(payload.safetyStatus.summary)}</p>
@@ -413,7 +416,7 @@ function renderDashboardPage(state: ClawGuardState): string {
     <section>
       <h2>Checkup details</h2>
       <p>These posture items are read-only summaries built from the current approvals queue, recent audit trail, and install-demo metadata.</p>
-      <p>Need the deeper Alpha explanation? Open the plugin-owned <a href="${CHECKUP_ROUTE_PATH}">full safety checkup</a> for the same read-only posture source with per-item evidence and follow-up actions.</p>
+      <p>Need the deeper Alpha explanation? Open the plugin-owned <a href="${CHECKUP_ROUTE_PATH}">full safety checkup</a> for the same read-only posture source with per-item evidence and follow-up actions, then jump to <a href="${APPROVALS_ROUTE_PATH}">Approvals</a> for action or <a href="${AUDIT_ROUTE_PATH}">Audit</a> for replay.</p>
       <ul>
         ${checkupItems}
       </ul>
