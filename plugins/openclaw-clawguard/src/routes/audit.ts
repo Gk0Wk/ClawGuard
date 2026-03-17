@@ -8,9 +8,11 @@ import {
   CHECKUP_ROUTE_PATH,
   DASHBOARD_ROUTE_PATH,
   INSTALL_DEMO,
+  getOperatorAction,
   renderClawGuardNav,
   renderControlSurfaceIntro,
   renderInstallDemoPostureNote,
+  renderOperatorActionLink,
 } from './shared.js';
 
 type AuditKindGuide = {
@@ -50,10 +52,12 @@ type TimelineFlow = {
   readonly toolName?: string;
   readonly pendingActionId?: string;
   readonly runId?: string;
+  readonly origin: string;
   readonly riskDecision: string;
   readonly systemAction: string;
   readonly userDecision: string;
   readonly finalOutcome: string;
+  readonly inspectNext: string;
   readonly events: TimelineEvent[];
 };
 
@@ -74,7 +78,9 @@ type AuditTimelinePayload = {
     readonly summary: {
       readonly totalEntries: number;
       readonly totalFlows: number;
+      readonly approvalOriginFlows: number;
       readonly pendingApprovalFlows: number;
+      readonly waitingRetryFlows: number;
       readonly approvedFlows: number;
       readonly deniedFlows: number;
       readonly allowedFlows: number;
@@ -85,6 +91,8 @@ type AuditTimelinePayload = {
     readonly flows: TimelineFlow[];
   };
 };
+
+const APPROVALS_ACTION = getOperatorAction('review-approvals');
 
 const AUDIT_KIND_GUIDE: Record<AuditEntryKind, AuditKindGuide> = {
   risk_hit: {
@@ -229,8 +237,14 @@ function buildAuditPayload(state: ClawGuardState): AuditTimelinePayload {
   const flows = buildTimelineFlows(audit);
   const flowOutcomes = flows.reduce(
     (summary, flow) => {
+      if (flow.origin === 'Approvals queue') {
+        summary.approvalOriginFlows += 1;
+      }
       if (flow.userDecision === 'Waiting for decision') {
         summary.pendingApprovalFlows += 1;
+      }
+      if (flow.finalOutcome === 'Waiting for approved retry') {
+        summary.waitingRetryFlows += 1;
       }
       if (flow.userDecision === 'Approved') {
         summary.approvedFlows += 1;
@@ -250,7 +264,9 @@ function buildAuditPayload(state: ClawGuardState): AuditTimelinePayload {
       return summary;
     },
     {
+      approvalOriginFlows: 0,
       pendingApprovalFlows: 0,
+      waitingRetryFlows: 0,
       approvedFlows: 0,
       deniedFlows: 0,
       allowedFlows: 0,
@@ -315,6 +331,7 @@ function buildTimelineFlow(flowId: string, entries: AuditEntry[]): TimelineFlow 
   const runId = firstDefined(entries.map((entry) => entry.run_id));
   const userDecision = summarizeFlowUserDecision(entries);
   const finalOutcome = summarizeFlowOutcome(entries, userDecision);
+  const origin = summarizeFlowOrigin(entries, pendingActionId);
 
   return {
     flowId,
@@ -327,10 +344,12 @@ function buildTimelineFlow(flowId: string, entries: AuditEntry[]): TimelineFlow 
     ...(toolName ? { toolName } : {}),
     ...(pendingActionId ? { pendingActionId } : {}),
     ...(runId ? { runId } : {}),
+    origin,
     riskDecision: summarizeFlowRiskDecision(entries),
     systemAction: summarizeFlowSystemAction(entries),
     userDecision,
     finalOutcome,
+    inspectNext: summarizeFlowInspectNext(origin, userDecision, finalOutcome),
     events,
   };
 }
@@ -433,6 +452,55 @@ function summarizeFlowOutcome(entries: AuditEntry[], userDecision: string): stri
   return 'No final outcome yet';
 }
 
+function summarizeFlowOrigin(entries: AuditEntry[], pendingActionId?: string): string {
+  if (
+    pendingActionId ||
+    entries.some((entry) =>
+      ['pending_action_created', 'approved', 'denied', 'allow_once_issued', 'allow_once_revoked', 'allow_once_consumed'].includes(
+        entry.kind,
+      ),
+    )
+  ) {
+    return 'Approvals queue';
+  }
+
+  return 'Direct audit trail';
+}
+
+function summarizeFlowInspectNext(origin: string, userDecision: string, finalOutcome: string): string {
+  if (origin !== 'Approvals queue') {
+    return finalOutcome === 'No final outcome yet'
+      ? 'Inspect later entries here for the eventual outcome.'
+      : `Inspect ${finalOutcome} as the current replay ending.`;
+  }
+
+  if (userDecision === 'Waiting for decision') {
+    return 'Still live in Approvals. After the queue item closes, inspect whether the replay ended blocked, expired, or moved into the approved retry path.';
+  }
+
+  if (finalOutcome === 'Waiting for approved retry') {
+    return 'Retry the same tool call once from the operator workflow, then inspect Allowed, Blocked, or Failed here.';
+  }
+
+  if (userDecision === 'Denied') {
+    return 'Inspect Blocked to confirm the deny decision closed the approval path.';
+  }
+
+  if (finalOutcome === 'Allowed') {
+    return 'Inspect Allowed to confirm the approved retry completed successfully.';
+  }
+
+  if (finalOutcome === 'Failed') {
+    return 'Inspect Failed to confirm the approved retry ran but did not succeed.';
+  }
+
+  if (finalOutcome === 'Blocked') {
+    return 'Inspect Blocked to confirm the approval-originated replay still ended in a protective stop.';
+  }
+
+  return `Inspect ${finalOutcome} as the latest approval-originated replay ending.`;
+}
+
 function buildFlowTitle(toolName?: string, pendingActionId?: string): string {
   const normalizedTool = toolName ? `${toolName} replay` : 'Recorded replay';
   return pendingActionId ? `${normalizedTool} for pending approval` : normalizedTool;
@@ -480,12 +548,21 @@ function renderAuditPage(payload: AuditTimelinePayload): string {
             <div class="audit-flow__status-grid">
               <p><strong>Started:</strong> ${escapeHtml(flow.startedAtLabel)}</p>
               <p><strong>Last event:</strong> ${escapeHtml(flow.lastEventAtLabel)}</p>
+              <p><strong>Origin:</strong> ${escapeHtml(flow.origin)}</p>
               <p><strong>Risk / decision:</strong> ${escapeHtml(flow.riskDecision)}</p>
               <p><strong>System did:</strong> ${escapeHtml(flow.systemAction)}</p>
               <p><strong>User decision:</strong> ${escapeHtml(flow.userDecision)}</p>
               <p><strong>Final outcome:</strong> ${escapeHtml(flow.finalOutcome)}</p>
+              <p><strong>Inspect next:</strong> ${escapeHtml(flow.inspectNext)}</p>
             </div>
           </header>
+          <p class="audit-flow__handoff">${
+            flow.origin === 'Approvals queue'
+              ? flow.finalOutcome === 'Waiting for decision' || flow.finalOutcome === 'Waiting for approved retry'
+                ? `This replay started in ${renderOperatorActionLink(APPROVALS_ACTION, 'Approvals')}. Use that live queue for the next operator step, then return to this replay for closure.`
+                : 'This replay started in Approvals. The live queue handoff is over; inspect the final outcome shown here for closure.'
+              : 'This replay did not originate from Approvals, so Audit is the primary place to inspect the recorded ending.'
+          }</p>
           <ol class="audit-events">
             ${flow.events
               .map(
@@ -560,6 +637,7 @@ function renderAuditPage(payload: AuditTimelinePayload): string {
       .kind-guide { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 1rem 0 2rem; }
       .audit-timeline { display: grid; gap: 1rem; }
       .audit-flow__header { display: grid; gap: 1rem; margin-bottom: 1rem; }
+      .audit-flow__handoff { color: #1f2937; margin: 0 0 1rem; }
       .audit-flow__subtitle { color: #4b5563; margin-top: 0.25rem; }
       .audit-flow__status-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
       .audit-events { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
@@ -581,6 +659,7 @@ function renderAuditPage(payload: AuditTimelinePayload): string {
     ${renderInstallDemoPostureNote()}
     <section class="hero">
       <p>Replay the fake-only audit entries ClawGuard already captured. Dashboard is the status view, Checkup is the explanation view, Approvals is the action view, and Audit reconstructs what actually happened over time.</p>
+      <p>If a replay says <strong>Waiting for decision</strong> or <strong>Waiting for approved retry</strong>, the flow is still live in <a href="${APPROVALS_ROUTE_PATH}">Approvals</a>. Once it leaves the live queue, inspect the final outcome here.</p>
       <p><strong>Current posture:</strong> ${escapeHtml(INSTALL_DEMO.demoPosture)}</p>
       <p><strong>Navigation posture:</strong> ${escapeHtml(INSTALL_DEMO.navigationPosture)}</p>
     </section>
@@ -588,6 +667,10 @@ function renderAuditPage(payload: AuditTimelinePayload): string {
       <article>
         <h2>Trail size</h2>
         <p><strong>${payload.timeline.summary.totalEntries}</strong> audit entries grouped into <strong>${payload.timeline.summary.totalFlows}</strong> replay flows.</p>
+      </article>
+      <article>
+        <h2>Approval handoffs</h2>
+        <p>Approval-originated: <strong>${payload.timeline.summary.approvalOriginFlows}</strong> · Waiting for decision: <strong>${payload.timeline.summary.pendingApprovalFlows}</strong> · Waiting for retry: <strong>${payload.timeline.summary.waitingRetryFlows}</strong></p>
       </article>
       <article>
         <h2>Human decisions</h2>
@@ -607,7 +690,7 @@ function renderAuditPage(payload: AuditTimelinePayload): string {
     </section>
     <section>
       <h2>Timeline replay</h2>
-      <p>Each grouped flow shows when the action started, the risk or approval path, what ClawGuard did, what the user decided, and the current final outcome.</p>
+      <p>Each grouped flow shows when the action started, whether it originated from Approvals, what ClawGuard did, what the user decided, and which final outcome to inspect next.</p>
       <div class="audit-timeline">
         ${flowCards || '<p>No audit entries yet.</p>'}
       </div>

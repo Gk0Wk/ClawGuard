@@ -1249,9 +1249,12 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(getResponse.statusCode).toBe(200);
     expect(getResponse.body).toContain('ClawGuard approvals');
     expect(getResponse.body).toContain('Live queue summary');
+    expect(getResponse.body).toContain('Queue boundary');
     expect(getResponse.body).toContain('How to read live states');
+    expect(getResponse.body).toContain('Decision needed now');
     expect(getResponse.body).toContain('Decision needed');
     expect(getResponse.body).toContain('What the operator can do now:');
+    expect(getResponse.body).toContain('Where to look next:');
     expect(getResponse.body).toContain(pending.pending_action_id);
 
     const approveResponse = createMockResponse();
@@ -1325,7 +1328,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
     expect(getResponse.statusCode).toBe(200);
     expect(getResponse.body).toContain('ClawGuard approvals');
-    expect(getResponse.body).toContain('Non-live states such as denied, expired, consumed, and evicted are not shown in this queue.');
+    expect(getResponse.body).toContain(
+      'This page only shows live queue states: pending and approved_waiting_retry.',
+    );
     expect(getResponse.body).toContain(deniedPending.pending_action_id);
 
     const denyResponse = createMockResponse();
@@ -1425,6 +1430,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(htmlResponse.statusCode).toBe(200);
     expect(htmlResponse.body).toContain('Approved, waiting for one retry');
     expect(htmlResponse.body).toContain('Current boundary:</strong> This live item already has its one approval.');
+    expect(htmlResponse.body).toContain('Where to look next:');
+    expect(htmlResponse.body).toContain('Approved, waiting for retry');
+    expect(htmlResponse.body).toContain('Open audit replay');
+    expect(htmlResponse.body).toContain(`#flow-${pending.pending_action_id}`);
     expect(htmlResponse.body).toContain('Deny and keep blocked');
     expect(htmlResponse.body).toContain('/plugins/clawguard/dashboard');
     expect(htmlResponse.body).toContain('/plugins/clawguard/checkup');
@@ -1457,6 +1466,8 @@ describe('OpenClaw ClawGuard plugin spike', () => {
           audit: '/plugins/clawguard/audit',
         },
         hiddenTerminalStates: ['denied', 'expired', 'consumed', 'evicted'],
+        boundaryNote:
+          'This page only shows live queue states: pending and approved_waiting_retry. Once a flow lands in denied, expired, consumed, or evicted, it leaves this queue and stays explainable from Audit replay.',
       },
       stateGuide: [
         {
@@ -1717,6 +1728,12 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       actionId: string;
       label: string;
       href: string;
+      target: string;
+      surface: {
+        id: string;
+        label: string;
+      };
+      intent: string;
       summary: string;
     };
     type DashboardCheckupItem = {
@@ -1728,9 +1745,16 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     };
     type DashboardQuickAction = {
       id: string;
+      label: string;
       title: string;
       description: string;
       href: string;
+      target: string;
+      surface: {
+        id: string;
+        label: string;
+      };
+      intent: string;
       cta: string;
       relatedCheckupItemIds: string[];
     };
@@ -1741,13 +1765,25 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       checks: unknown[];
     };
     type DashboardMainDrag = {
+      itemId: string;
+      status: string;
       label: string;
       explanation: string;
+      recommendedAction: DashboardRecommendedAction;
     };
     type DashboardFirstFix = {
+      checkupItemId: string;
+      actionId: string;
       title: string;
       why: string;
       href: string;
+      target: string;
+      surface: {
+        id: string;
+        label: string;
+      };
+      intent: string;
+      cta: string;
     };
     type DashboardRoutePayload = {
       safetyStatus: DashboardSafetyStatus;
@@ -1802,8 +1838,15 @@ describe('OpenClaw ClawGuard plugin spike', () => {
             explanation: `1 live approval is still waiting for a human decision. Latest: ${pending.tool_name} — ${pending.reason_summary}.`,
             recommendedAction: expect.objectContaining({
               actionId: 'review-approvals',
-              label: 'Review 1 approval',
+              label: 'Open approvals queue',
               href: '/plugins/clawguard/approvals',
+              target: '_self',
+              surface: {
+                id: 'approvals',
+                label: 'Approvals',
+              },
+              intent: 'Review live risky actions that still need a human decision.',
+              summary: 'Go to Approvals and resolve 1 pending approval before retrying any risky fake-only action',
             }),
           }),
           expect.objectContaining({
@@ -1852,13 +1895,32 @@ describe('OpenClaw ClawGuard plugin spike', () => {
           label: 'Approval queue needs a decision',
           status: 'urgent',
           explanation: `1 live approval is still waiting for a human decision. Latest: ${pending.tool_name} — ${pending.reason_summary}.`,
+          recommendedAction: {
+            actionId: 'review-approvals',
+            label: 'Open approvals queue',
+            href: '/plugins/clawguard/approvals',
+            target: '_self',
+            surface: {
+              id: 'approvals',
+              label: 'Approvals',
+            },
+            intent: 'Review live risky actions that still need a human decision.',
+            summary: 'Go to Approvals and resolve 1 pending approval before retrying any risky fake-only action',
+          },
         },
         firstFix: {
+          checkupItemId: 'approval-queue',
           actionId: 'review-approvals',
-          title: 'Review pending approvals',
+          title: 'Open approvals queue',
           href: '/plugins/clawguard/approvals',
-          cta: 'Review 1 approval',
-          why: 'Resolve 1 pending approval before retrying any risky fake-only action.',
+          target: '_self',
+          surface: {
+            id: 'approvals',
+            label: 'Approvals',
+          },
+          intent: 'Review live risky actions that still need a human decision.',
+          cta: 'Open approvals queue',
+          why: 'Go to Approvals and resolve 1 pending approval before retrying any risky fake-only action',
         },
       },
       pendingApprovals: {
@@ -1884,7 +1946,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
           severity: 'urgent',
           title: 'Approval queue needs a decision',
           summary: `1 live approval is still waiting for a human decision. Latest: ${pending.tool_name} — ${pending.reason_summary}.`,
-          actionLabel: 'Review 1 approval',
+          actionLabel: 'Open approvals queue',
           href: '/plugins/clawguard/approvals',
         }),
         expect.objectContaining({
@@ -1893,7 +1955,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
           severity: 'needs_attention',
           title: 'Recent audit shows protective interventions',
           summary: `The latest ${recentAuditItems.length} audit event(s) include ${recentRiskSignals} risk or block signals, so recent behavior still needs operator explanation.`,
-          actionLabel: 'Open audit',
+          actionLabel: 'Open audit replay',
           href: '/plugins/clawguard/audit',
         }),
         expect.objectContaining({
@@ -1907,33 +1969,61 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       quickActions: expect.arrayContaining([
         expect.objectContaining({
           id: 'review-approvals',
+          label: 'Open approvals queue',
           title: 'Review pending approvals',
           description: 'Resolve 1 pending approval before retrying any risky fake-only action.',
-          cta: 'Review 1 approval',
+          target: '_self',
+          surface: {
+            id: 'approvals',
+            label: 'Approvals',
+          },
+          intent: 'Review live risky actions that still need a human decision.',
+          cta: 'Open approvals queue',
           href: '/plugins/clawguard/approvals',
           relatedCheckupItemIds: ['approval-queue'],
         }),
         expect.objectContaining({
           id: 'retry-approved-actions',
+          label: 'Open approved retry backlog',
           title: 'Check approved retry backlog',
           description: `No approved fake-only actions are waiting right now, but the approvals page is where the single-retry backlog would appear inside the ${state.config.approvalTtlSeconds}s TTL.`,
-          cta: 'Open approvals',
+          target: '_self',
+          surface: {
+            id: 'approvals',
+            label: 'Approvals',
+          },
+          intent: 'Find approved fake-only actions that still need one controlled retry.',
+          cta: 'Open approved retry backlog',
           href: '/plugins/clawguard/approvals',
           relatedCheckupItemIds: ['approved-retry-backlog'],
         }),
         expect.objectContaining({
           id: 'inspect-audit-signals',
+          label: 'Open audit replay',
           title: 'Inspect recent protective events',
           description: `The latest ${recentAuditItems.length} audit event(s) include ${recentRiskSignals} risk or error signals. Use the audit page to explain what ClawGuard blocked, queued, or failed.`,
-          cta: 'Open audit',
+          target: '_self',
+          surface: {
+            id: 'audit',
+            label: 'Audit',
+          },
+          intent: 'Replay what ClawGuard blocked, queued, allowed, or failed.',
+          cta: 'Open audit replay',
           href: '/plugins/clawguard/audit',
           relatedCheckupItemIds: ['recent-audit-signals'],
         }),
         expect.objectContaining({
           id: 'review-demo-posture',
+          label: 'Open install-demo settings',
           title: 'Confirm alpha limits and guardrails',
           description: `Check the live TTL (${state.config.approvalTtlSeconds}s), pending limit (${state.config.pendingActionLimit}), allow-once limit (${state.config.allowOnceGrantLimit}), and install-demo posture before any walkthrough.`,
-          cta: 'Open settings',
+          target: '_self',
+          surface: {
+            id: 'settings',
+            label: 'Settings',
+          },
+          intent: 'Confirm alpha limits, TTLs, and install-demo guardrails.',
+          cta: 'Open install-demo settings',
           href: '/plugins/clawguard/settings',
           relatedCheckupItemIds: ['install-demo-posture'],
         }),
@@ -1952,10 +2042,13 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       }
       expect(item.recommendedAction).toMatchObject({
         actionId: action.id,
-        label: action.cta,
+        label: action.label,
         href: action.href,
-        summary: action.description,
+        target: action.target,
+        surface: action.surface,
+        intent: action.intent,
       });
+      expect(item.recommendedAction.summary).toContain(`Go to ${action.surface.label}`);
       expect(action.relatedCheckupItemIds).toContain(item.id);
       expect(dashboardHtmlResponse.body).toContain(`id="checkup-${item.id}"`);
       expect(dashboardHtmlResponse.body).toContain(`id="action-${action.id}"`);
@@ -2011,12 +2104,15 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(checkupHtmlResponse.body).toContain(dashboardPayload.checkup.firstFix.title);
     expect(checkupHtmlResponse.body).toContain(dashboardPayload.checkup.firstFix.why);
     expect(checkupHtmlResponse.body).toContain(dashboardPayload.checkup.firstFix.href);
+    expect(checkupHtmlResponse.body).toContain(`Action ID: <code>${dashboardPayload.checkup.firstFix.actionId}</code>`);
+    expect(checkupHtmlResponse.body).toContain(`Opens ${dashboardPayload.checkup.firstFix.surface.label}`);
     for (const item of dashboardPayload.checkup.items) {
       expect(checkupHtmlResponse.body).toContain(`id="checkup-${item.id}"`);
       expect(checkupHtmlResponse.body).toContain(item.label);
       expect(checkupHtmlResponse.body).toContain(item.explanation);
       expect(checkupHtmlResponse.body).toContain(item.recommendedAction.label);
       expect(checkupHtmlResponse.body).toContain(item.recommendedAction.href);
+      expect(checkupHtmlResponse.body).toContain(`Action ID: <code>${item.recommendedAction.actionId}</code>`);
     }
     for (const action of dashboardPayload.quickActions) {
       expect(checkupHtmlResponse.body).toContain(`id="action-${action.id}"`);
@@ -2068,10 +2164,13 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
     expect(auditHtmlResponse.body).toContain('Audit = replay');
     expect(auditHtmlResponse.body).toContain('Replay the fake-only audit entries ClawGuard already captured.');
+    expect(auditHtmlResponse.body).toContain('Waiting for approved retry');
+    expect(auditHtmlResponse.body).toContain('the flow is still live in');
     expect(auditHtmlResponse.body).toContain('How to read this replay');
     expect(auditHtmlResponse.body).toContain('Timeline replay');
     expect(auditHtmlResponse.body).toContain('Replay flow');
     expect(auditHtmlResponse.body).toContain('Trail size');
+    expect(auditHtmlResponse.body).toContain('Approval handoffs');
     expect(auditHtmlResponse.body).toContain('Human decisions');
     expect(auditHtmlResponse.body).toContain('Final outcomes');
     expect(auditHtmlResponse.body).toContain('They do not add new hooks, new runtime capture, or new audit persistence.');
@@ -2092,9 +2191,11 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       'ClawGuard let the action proceed, but the tool or delivery still failed afterward.',
     );
     expect(auditHtmlResponse.body).toContain('Risk / decision:');
+    expect(auditHtmlResponse.body).toContain('Origin:');
     expect(auditHtmlResponse.body).toContain('System did:');
     expect(auditHtmlResponse.body).toContain('User decision:');
     expect(auditHtmlResponse.body).toContain('Final outcome:');
+    expect(auditHtmlResponse.body).toContain('Inspect next:');
     expect(auditHtmlResponse.body).toContain('Waiting for a human decision.');
     expect(auditHtmlResponse.body).toContain('Queued the action for review and saved the pending action ID for replay.');
     expect(auditHtmlResponse.body).toContain('Signal only. Look at later entries for the ending.');
@@ -2138,7 +2239,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         summary: expect.objectContaining({
           totalEntries: state.audit.list().length,
           totalFlows: expect.any(Number),
+          approvalOriginFlows: expect.any(Number),
           pendingApprovalFlows: expect.any(Number),
+          waitingRetryFlows: expect.any(Number),
           blockedFlows: expect.any(Number),
         }),
         kindGuide: expect.arrayContaining([
@@ -2189,9 +2292,11 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         flows: expect.arrayContaining([
           expect.objectContaining({
             pendingActionId: pending.pending_action_id,
+            origin: 'Approvals queue',
             riskDecision: 'Approval required',
             userDecision: 'Waiting for decision',
             finalOutcome: 'Blocked',
+            inspectNext: expect.stringContaining('inspect whether the replay ended'),
           }),
         ]),
       },
@@ -2249,6 +2354,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(htmlResponse.body).toContain(approvedPending.pending_action_id);
     expect(htmlResponse.body).toContain(deniedPending.pending_action_id);
     expect(htmlResponse.body).toContain('exec replay for pending approval');
+    expect(htmlResponse.body).toContain('Approvals queue');
     expect(htmlResponse.body).toContain('Approved');
     expect(htmlResponse.body).toContain('Denied');
     expect(htmlResponse.body).toContain('Allowed');
@@ -2256,6 +2362,8 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(htmlResponse.body).toContain('Spent the one approved retry and let the matching action continue.');
     expect(htmlResponse.body).toContain('Recorded the final allowed outcome for the replay trail.');
     expect(htmlResponse.body).toContain('Blocked by human decision');
+    expect(htmlResponse.body).toContain('Inspect Allowed to confirm the approved retry completed successfully.');
+    expect(htmlResponse.body).toContain('Inspect Blocked to confirm the deny decision closed the approval path.');
 
     const jsonResponse = createMockResponse();
     auditRoute(
@@ -2269,24 +2377,30 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     const auditPayload = JSON.parse(jsonResponse.body) as {
       timeline: {
         summary: {
+          approvalOriginFlows: number;
           approvedFlows: number;
           deniedFlows: number;
+          waitingRetryFlows: number;
           allowedFlows: number;
           blockedFlows: number;
         };
         flows: Array<{
           pendingActionId?: string;
+          origin: string;
           userDecision: string;
           finalOutcome: string;
           systemAction: string;
+          inspectNext: string;
           events: Array<{ kind: string }>;
         }>;
       };
     };
 
     expect(auditPayload.timeline.summary).toMatchObject({
+      approvalOriginFlows: 2,
       approvedFlows: 1,
       deniedFlows: 1,
+      waitingRetryFlows: 0,
       allowedFlows: 1,
       blockedFlows: 1,
     });
@@ -2294,9 +2408,11 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       expect.arrayContaining([
         expect.objectContaining({
           pendingActionId: approvedPending.pending_action_id,
+          origin: 'Approvals queue',
           userDecision: 'Approved',
           finalOutcome: 'Allowed',
           systemAction: 'Spent the one approved retry and let the matching action continue.',
+          inspectNext: 'Inspect Allowed to confirm the approved retry completed successfully.',
           events: expect.arrayContaining([
             expect.objectContaining({ kind: 'pending_action_created' }),
             expect.objectContaining({ kind: 'approved' }),
@@ -2307,8 +2423,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         }),
         expect.objectContaining({
           pendingActionId: deniedPending.pending_action_id,
+          origin: 'Approvals queue',
           userDecision: 'Denied',
           finalOutcome: 'Blocked',
+          inspectNext: 'Inspect Blocked to confirm the deny decision closed the approval path.',
           events: expect.arrayContaining([
             expect.objectContaining({ kind: 'pending_action_created' }),
             expect.objectContaining({ kind: 'denied' }),

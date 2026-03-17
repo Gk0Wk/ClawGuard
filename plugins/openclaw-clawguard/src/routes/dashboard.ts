@@ -8,9 +8,12 @@ import {
   CHECKUP_ROUTE_PATH,
   DASHBOARD_ROUTE_PATH,
   SETTINGS_ROUTE_PATH,
+  createOperatorQuickAction,
+  createRecommendedOperatorAction,
   renderClawGuardNav,
   renderControlSurfaceIntro,
   renderInstallDemoPostureNote,
+  renderOperatorActionLink,
   INSTALL_DEMO,
 } from './shared.js';
 
@@ -72,6 +75,17 @@ function compareCheckupItems(
   );
 }
 
+function describeRecommendedAction(
+  action: {
+    readonly surface: {
+      readonly label: string;
+    };
+  },
+  detail: string,
+): string {
+  return `Go to ${action.surface.label} and ${detail}`;
+}
+
 function renderPendingItem(entry: PendingAction): string {
   return `<li>
     <strong>${escapeHtml(entry.tool_name)}</strong> — ${escapeHtml(entry.reason_summary)}
@@ -100,23 +114,16 @@ export function createDashboardPayload(state: ClawGuardState) {
   const recentErrors = countAuditKinds(recentAuditItems, RECENT_ERROR_KINDS);
   const firstPending = approvalsNeedingDecision[0];
   const quickActions = [
-    {
-      id: 'review-approvals',
+    createOperatorQuickAction('review-approvals', {
       title:
         approvalsNeedingDecision.length > 0 ? 'Review pending approvals' : 'Check the approvals queue',
       description:
         approvalsNeedingDecision.length > 0
           ? `Resolve ${pluralize(approvalsNeedingDecision.length, 'pending approval')} before retrying any risky fake-only action.`
           : 'The queue is clear now, but this is still the fastest place to confirm whether a risky action was held for review.',
-      href: APPROVALS_ROUTE_PATH,
-      cta:
-        approvalsNeedingDecision.length > 0
-          ? `Review ${pluralize(approvalsNeedingDecision.length, 'approval')}`
-          : 'Open approvals',
       relatedCheckupItemIds: ['approval-queue'],
-    },
-    {
-      id: 'retry-approved-actions',
+    }),
+    createOperatorQuickAction('retry-approved-actions', {
       title:
         approvalsAwaitingRetry.length > 0
           ? 'Retry approved fake-only actions'
@@ -125,31 +132,23 @@ export function createDashboardPayload(state: ClawGuardState) {
         approvalsAwaitingRetry.length > 0
           ? `Retry ${pluralize(approvalsAwaitingRetry.length, 'approved action')} once inside the ${state.config.approvalTtlSeconds}s TTL, then confirm the follow-up audit result.`
           : `No approved fake-only actions are waiting right now, but the approvals page is where the single-retry backlog would appear inside the ${state.config.approvalTtlSeconds}s TTL.`,
-      href: APPROVALS_ROUTE_PATH,
-      cta: approvalsAwaitingRetry.length > 0 ? 'Open retry backlog' : 'Open approvals',
       relatedCheckupItemIds: ['approved-retry-backlog'],
-    },
-    {
-      id: 'inspect-audit-signals',
+    }),
+    createOperatorQuickAction('inspect-audit-signals', {
       title: recentRiskSignals > 0 ? 'Inspect recent protective events' : 'Review recent audit events',
       description:
         recentErrors > 0
           ? `The latest ${recentAuditItems.length} audit event(s) include ${pluralize(recentErrors, 'error or failed outcome')} and ${pluralize(recentRiskSignals, 'total risk or error signal')}. Use the audit page to explain the failing path first.`
           : recentRiskSignals > 0
             ? `The latest ${recentAuditItems.length} audit event(s) include ${pluralize(recentRiskSignals, 'risk or error signal')}. Use the audit page to explain what ClawGuard blocked, queued, or failed.`
-          : 'Use the audit page to confirm the latest fake-only actions and show that the current demo trail is quiet.',
-      href: AUDIT_ROUTE_PATH,
-      cta: 'Open audit',
+            : 'Use the audit page to confirm the latest fake-only actions and show that the current demo trail is quiet.',
       relatedCheckupItemIds: ['recent-audit-signals'],
-    },
-    {
-      id: 'review-demo-posture',
+    }),
+    createOperatorQuickAction('review-demo-posture', {
       title: 'Confirm alpha limits and guardrails',
       description: `Check the live TTL (${state.config.approvalTtlSeconds}s), pending limit (${state.config.pendingActionLimit}), allow-once limit (${state.config.allowOnceGrantLimit}), and install-demo posture before any walkthrough.`,
-      href: SETTINGS_ROUTE_PATH,
-      cta: 'Open settings',
       relatedCheckupItemIds: ['install-demo-posture'],
-    },
+    }),
   ];
   const quickActionById = Object.fromEntries(quickActions.map((action) => [action.id, action]));
   const checkupItems = [
@@ -167,12 +166,14 @@ export function createDashboardPayload(state: ClawGuardState) {
         approvalsNeedingDecision.length > 0
           ? `${pluralize(approvalsNeedingDecision.length, 'live approval')} ${approvalsNeedingDecision.length === 1 ? 'is' : 'are'} still waiting for a human decision. Latest: ${firstPending ? `${firstPending.tool_name} — ${firstPending.reason_summary}` : 'review the queue now'}.`
           : 'No live approvals are waiting for a human decision.',
-      recommendedAction: {
-        actionId: 'review-approvals',
-        label: quickActionById['review-approvals'].cta,
-        href: quickActionById['review-approvals'].href,
-        summary: quickActionById['review-approvals'].description,
-      },
+      recommendedAction: createRecommendedOperatorAction('review-approvals', {
+        summary: describeRecommendedAction(
+          quickActionById['review-approvals'],
+          approvalsNeedingDecision.length > 0
+            ? `resolve ${pluralize(approvalsNeedingDecision.length, 'pending approval')} before retrying any risky fake-only action`
+            : 'confirm that no live approval is waiting for a human decision',
+        ),
+      }),
       evidence: {
         awaitingDecision: approvalsNeedingDecision.length,
         totalLive: pendingActions.length,
@@ -200,12 +201,16 @@ export function createDashboardPayload(state: ClawGuardState) {
           : recentRiskSignals > 0
             ? `The latest ${recentAuditItems.length} audit event(s) include ${pluralize(recentRiskSignals, 'risk or block signal')}, so recent behavior still needs operator explanation.`
             : `The latest ${recentAuditItems.length} audit event(s) do not include fresh risk, block, or error signals.`,
-      recommendedAction: {
-        actionId: 'inspect-audit-signals',
-        label: quickActionById['inspect-audit-signals'].cta,
-        href: quickActionById['inspect-audit-signals'].href,
-        summary: quickActionById['inspect-audit-signals'].description,
-      },
+      recommendedAction: createRecommendedOperatorAction('inspect-audit-signals', {
+        summary: describeRecommendedAction(
+          quickActionById['inspect-audit-signals'],
+          recentErrors > 0
+            ? 'explain the failing audit path before calling the demo stable'
+            : recentRiskSignals > 0
+              ? 'explain what ClawGuard blocked, queued, or failed in the latest audit trail'
+              : 'confirm that the latest audit trail is quiet',
+        ),
+      }),
       evidence: {
         sampleSize: recentAuditItems.length,
         riskSignals: recentRiskSignals,
@@ -228,12 +233,14 @@ export function createDashboardPayload(state: ClawGuardState) {
         approvalsAwaitingRetry.length > 0
           ? `${pluralize(approvalsAwaitingRetry.length, 'approved action')} ${approvalsAwaitingRetry.length === 1 ? 'is' : 'are'} still waiting for the single retry inside the ${state.config.approvalTtlSeconds}-second approval TTL.`
           : 'No approved fake-only actions are waiting for their single retry.',
-      recommendedAction: {
-        actionId: 'retry-approved-actions',
-        label: quickActionById['retry-approved-actions'].cta,
-        href: quickActionById['retry-approved-actions'].href,
-        summary: quickActionById['retry-approved-actions'].description,
-      },
+      recommendedAction: createRecommendedOperatorAction('retry-approved-actions', {
+        summary: describeRecommendedAction(
+          quickActionById['retry-approved-actions'],
+          approvalsAwaitingRetry.length > 0
+            ? `identify which approved fake-only action still needs its one retry inside the ${state.config.approvalTtlSeconds}-second TTL`
+            : 'confirm that no approved fake-only action is waiting for a single retry',
+        ),
+      }),
       evidence: {
         awaitingRetry: approvalsAwaitingRetry.length,
         approvalTtlSeconds: state.config.approvalTtlSeconds,
@@ -246,12 +253,12 @@ export function createDashboardPayload(state: ClawGuardState) {
       status: 'needs_attention' as const,
       passed: false,
       explanation: `${INSTALL_DEMO.demoPosture} Coverage remains limited: ${INSTALL_DEMO.coverage}`,
-      recommendedAction: {
-        actionId: 'review-demo-posture',
-        label: quickActionById['review-demo-posture'].cta,
-        href: quickActionById['review-demo-posture'].href,
-        summary: quickActionById['review-demo-posture'].description,
-      },
+      recommendedAction: createRecommendedOperatorAction('review-demo-posture', {
+        summary: describeRecommendedAction(
+          quickActionById['review-demo-posture'],
+          `confirm the live TTL (${state.config.approvalTtlSeconds}s), pending limit (${state.config.pendingActionLimit}), allow-once limit (${state.config.allowOnceGrantLimit}), and install-demo guardrails before any walkthrough`,
+        ),
+      }),
       evidence: {
         published: INSTALL_DEMO.published,
         smokePathCount: INSTALL_DEMO.smokePaths.length,
@@ -262,7 +269,7 @@ export function createDashboardPayload(state: ClawGuardState) {
   const failingCheckupItems = checkupItems.filter((item) => !item.passed).sort(compareCheckupItems);
   const publicCheckupItems = checkupItems.map(({ dragRank, ...item }) => item);
   const mainDragItem = failingCheckupItems[0] ?? [...checkupItems].sort(compareCheckupItems)[0];
-  const firstFixAction = quickActionById[mainDragItem.recommendedAction.actionId];
+  const mainDragAction = mainDragItem.recommendedAction;
   const safetyStatusValue =
     failingCheckupItems.some((item) => item.status === 'urgent')
       ? ('urgent' as const)
@@ -280,6 +287,8 @@ export function createDashboardPayload(state: ClawGuardState) {
       summary: item.explanation,
       actionLabel: item.recommendedAction.label,
       href: item.recommendedAction.href,
+      target: item.recommendedAction.target,
+      intent: item.recommendedAction.intent,
     }));
 
   return {
@@ -300,7 +309,7 @@ export function createDashboardPayload(state: ClawGuardState) {
           ? `This status is driven by ${failingCheckupItems.map((item) => item.label.toLowerCase()).join(', ')}.`
           : 'All checkup items are currently healthy.',
       mainDragItemId: mainDragItem.id,
-      firstFixActionId: firstFixAction.id,
+      firstFixActionId: mainDragAction.actionId,
       score: {
         passed: passedChecks,
         total: publicCheckupItems.length,
@@ -319,13 +328,18 @@ export function createDashboardPayload(state: ClawGuardState) {
         label: mainDragItem.label,
         status: mainDragItem.status,
         explanation: mainDragItem.explanation,
+        recommendedAction: mainDragAction,
       },
       firstFix: {
-        actionId: firstFixAction.id,
-        title: firstFixAction.title,
-        href: firstFixAction.href,
-        cta: firstFixAction.cta,
-        why: mainDragItem.recommendedAction.summary,
+        checkupItemId: mainDragItem.id,
+        actionId: mainDragAction.actionId,
+        title: mainDragAction.label,
+        href: mainDragAction.href,
+        target: mainDragAction.target,
+        surface: mainDragAction.surface,
+        intent: mainDragAction.intent,
+        cta: mainDragAction.label,
+        why: mainDragAction.summary,
       },
     },
     pendingApprovals: {
@@ -362,7 +376,7 @@ function renderDashboardPage(state: ClawGuardState): string {
   const checkupItems = payload.checkup.items
     .map(
       (item) =>
-        `<li id="checkup-${escapeHtml(item.id)}"><strong>${escapeHtml(summarizeCheckupStatus(item.status))}:</strong> ${escapeHtml(item.label)} — ${escapeHtml(item.explanation)} <a href="${item.recommendedAction.href}">${escapeHtml(item.recommendedAction.label)}</a><br /><small>Recommended next step: ${escapeHtml(item.recommendedAction.summary)}</small></li>`,
+        `<li id="checkup-${escapeHtml(item.id)}"><strong>${escapeHtml(summarizeCheckupStatus(item.status))}:</strong> ${escapeHtml(item.label)} — ${escapeHtml(item.explanation)} ${renderOperatorActionLink(item.recommendedAction, item.recommendedAction.label)}<br /><small>Recommended next step: ${escapeHtml(item.recommendedAction.summary)}</small><br /><small>Operator intent: ${escapeHtml(item.recommendedAction.intent)}</small></li>`,
     )
     .join('\n');
 
@@ -384,7 +398,8 @@ function renderDashboardPage(state: ClawGuardState): string {
       <p>${escapeHtml(payload.safetyStatus.explanation)}</p>
       <p><strong>Why this status:</strong> ${escapeHtml(payload.safetyStatus.why)}</p>
       <p><strong>Main drag right now:</strong> ${escapeHtml(payload.checkup.mainDrag.label)} — ${escapeHtml(payload.checkup.mainDrag.explanation)}</p>
-      <p><strong>Fix first:</strong> <a href="${payload.checkup.firstFix.href}">${escapeHtml(payload.checkup.firstFix.title)}</a> — ${escapeHtml(payload.checkup.firstFix.why)}</p>
+      <p><small>Mapped action: ${renderOperatorActionLink(payload.checkup.mainDrag.recommendedAction, payload.checkup.mainDrag.recommendedAction.label)} · Action ID: <code>${escapeHtml(payload.checkup.mainDrag.recommendedAction.actionId)}</code> · Opens ${escapeHtml(payload.checkup.mainDrag.recommendedAction.surface.label)}</small></p>
+      <p><strong>Fix first:</strong> ${renderOperatorActionLink(payload.checkup.firstFix, payload.checkup.firstFix.title)} — ${escapeHtml(payload.checkup.firstFix.why)}</p>
       <ul>
         ${payload.safetyStatus.checks
           .map(
@@ -408,9 +423,9 @@ function renderDashboardPage(state: ClawGuardState): string {
         ${payload.topRisks
           .map(
             (item) =>
-              `<li id="risk-${escapeHtml(item.checkupItemId)}"><strong>${escapeHtml(item.title)}</strong> (${escapeHtml(summarizeCheckupStatus(item.severity))}) — ${escapeHtml(item.summary)} <a href="${item.href}">${escapeHtml(item.actionLabel)}</a></li>`,
-          )
-          .join('\n')}
+              `<li id="risk-${escapeHtml(item.checkupItemId)}"><strong>${escapeHtml(item.title)}</strong> (${escapeHtml(summarizeCheckupStatus(item.severity))}) — ${escapeHtml(item.summary)} ${renderOperatorActionLink(item, item.actionLabel)}</li>`,
+           )
+           .join('\n')}
       </ul>
     </section>
     <section>
@@ -445,9 +460,9 @@ function renderDashboardPage(state: ClawGuardState): string {
         ${payload.quickActions
           .map(
             (action) =>
-              `<li id="action-${escapeHtml(action.id)}"><strong>${escapeHtml(action.title)}</strong> — ${escapeHtml(action.description)} <a href="${action.href}">${escapeHtml(action.cta)}</a><br /><small>Linked checkup item: ${action.relatedCheckupItemIds.map((itemId) => escapeHtml(itemId)).join(', ')}</small></li>`,
-          )
-          .join('\n')}
+              `<li id="action-${escapeHtml(action.id)}"><strong>${escapeHtml(action.title)}</strong> — ${escapeHtml(action.description)} ${renderOperatorActionLink(action, action.cta)}<br /><small>Intent: ${escapeHtml(action.intent)}</small><br /><small>Linked checkup item: ${action.relatedCheckupItemIds.map((itemId) => escapeHtml(itemId)).join(', ')}</small></li>`,
+           )
+           .join('\n')}
       </ul>
     </section>
   </body>

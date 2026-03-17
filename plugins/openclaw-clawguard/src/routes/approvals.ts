@@ -8,9 +8,11 @@ import {
   CHECKUP_ROUTE_PATH,
   DASHBOARD_ROUTE_PATH,
   INSTALL_DEMO,
+  getOperatorAction,
   renderClawGuardNav,
   renderControlSurfaceIntro,
   renderInstallDemoPostureNote,
+  renderOperatorActionLink,
 } from './shared.js';
 
 type ApprovalStateGuide = {
@@ -19,6 +21,8 @@ type ApprovalStateGuide = {
   readonly meaning: string;
   readonly operatorAction: string;
 };
+
+const AUDIT_REPLAY_ACTION = getOperatorAction('inspect-audit-signals');
 
 const LIVE_STATE_GUIDE: ApprovalStateGuide[] = [
   {
@@ -34,12 +38,12 @@ const LIVE_STATE_GUIDE: ApprovalStateGuide[] = [
     meaning:
       'A human already approved this exact action, but the same tool call still has to be retried once before the TTL expires.',
     operatorAction:
-      'Retry the same tool call once, then confirm the final result on the audit page. No second approval is available from this live state.',
+      `Retry the same tool call once, then use ${AUDIT_REPLAY_ACTION.label.toLowerCase()} to confirm the final result. No second approval is available from this live state.`,
   },
 ] as const;
 
 const TERMINAL_STATE_BOUNDARY =
-  'Non-live states such as denied, expired, consumed, and evicted are not shown in this queue. Use Audit to explain how an earlier approval path ended.';
+  'This page only shows live queue states: pending and approved_waiting_retry. Once a flow lands in denied, expired, consumed, or evicted, it leaves this queue and stays explainable from Audit replay.';
 
 function endHtml(res: ServerResponse, statusCode: number, body: string): true {
   res.statusCode = statusCode;
@@ -130,7 +134,29 @@ function describeOperatorAction(entry: PendingAction, approvalTtlSeconds: number
     return `Approve once only if this exact ${entry.tool_name} action is expected, or deny it to keep the risky path blocked.`;
   }
 
-  return `Retry the same ${entry.tool_name} call once within ${approvalTtlSeconds} seconds of approval, then confirm whether the replay ended as allowed, blocked, or failed on ${AUDIT_ROUTE_PATH}.`;
+  return `Retry the same ${entry.tool_name} call once within ${approvalTtlSeconds} seconds of approval, then use ${AUDIT_REPLAY_ACTION.label.toLowerCase()} to confirm whether the replay ended as allowed, blocked, or failed.`;
+}
+
+function buildAuditFlowHref(pendingActionId: string): string {
+  return `${AUDIT_ROUTE_PATH}#flow-${pendingActionId}`;
+}
+
+function renderAuditFlowLink(pendingActionId: string, label: string): string {
+  return renderOperatorActionLink(
+    {
+      href: buildAuditFlowHref(pendingActionId),
+      target: AUDIT_REPLAY_ACTION.target,
+    },
+    label,
+  );
+}
+
+function describeWhereToLookNext(entry: PendingAction): string {
+  if (entry.status === 'pending') {
+    return `This stays in the live queue until someone approves or denies it here. After that live step closes, inspect ${AUDIT_REPLAY_ACTION.label.toLowerCase()} for the final replay outcome.`;
+  }
+
+  return `This is the handoff state between Approvals and Audit. Retry the same tool call once, then inspect the audit replay for the final allowed, blocked, or failed ending after it leaves the live queue.`;
 }
 
 function renderStateGuide(): string {
@@ -147,6 +173,7 @@ function renderStateGuide(): string {
 
 function renderPendingItem(entry: PendingAction, approvalTtlSeconds: number): string {
   const params = escapeHtml(JSON.stringify(entry.params, null, 2));
+  const auditFlowLink = renderAuditFlowLink(entry.pending_action_id, AUDIT_REPLAY_ACTION.label);
   const actions =
     entry.status === 'pending'
       ? `
@@ -159,7 +186,7 @@ function renderPendingItem(entry: PendingAction, approvalTtlSeconds: number): st
           </form>
         </div>
       `
-      : `<p><strong>Current boundary:</strong> This live item already has its one approval. The next operator step is to retry the same tool call once before ${escapeHtml(entry.expires_at)} and then verify the outcome in <a href="${AUDIT_ROUTE_PATH}">Audit</a>.</p>`;
+      : `<p><strong>Current boundary:</strong> This live item already has its one approval. Retry the same tool call once before ${escapeHtml(entry.expires_at)}, then use ${auditFlowLink} to confirm whether the single approved replay ended as allowed, blocked, or failed. After that closure, the flow leaves this queue and remains only in Audit.</p>`;
 
   return `
     <article id="approval-${escapeHtml(entry.pending_action_id)}">
@@ -170,7 +197,9 @@ function renderPendingItem(entry: PendingAction, approvalTtlSeconds: number): st
       <p><strong>Guidance:</strong> ${escapeHtml(describeRisk(entry))}</p>
       <p><strong>Impact scope:</strong> ${escapeHtml(describeImpactScope(entry))}</p>
       <p><strong>What the operator can do now:</strong> ${escapeHtml(describeOperatorAction(entry, approvalTtlSeconds))}</p>
+      <p><strong>Where to look next:</strong> ${escapeHtml(describeWhereToLookNext(entry))}</p>
       <p><strong>Live timing:</strong> Created ${escapeHtml(entry.created_at)} · Expires ${escapeHtml(entry.expires_at)}${entry.approved_at ? ` · Approved ${escapeHtml(entry.approved_at)}` : ''}</p>
+      <p><strong>Replay trail:</strong> ${auditFlowLink}</p>
       ${actions}
       <details>
         <summary>Show captured tool parameters</summary>
@@ -219,7 +248,12 @@ function buildApprovalsPayload(state: ClawGuardState) {
 
 function renderApprovalsPage(state: ClawGuardState): string {
   const payload = buildApprovalsPayload(state);
-  const items = payload.approvals
+  const pendingItems = payload.approvals
+    .filter((entry) => entry.status === 'pending')
+    .map((entry) => renderPendingItem(entry, state.config.approvalTtlSeconds))
+    .join('\n');
+  const approvedWaitingRetryItems = payload.approvals
+    .filter((entry) => entry.status === 'approved_waiting_retry')
     .map((entry) => renderPendingItem(entry, state.config.approvalTtlSeconds))
     .join('\n');
 
@@ -242,15 +276,32 @@ function renderApprovalsPage(state: ClawGuardState): string {
       <p>${escapeHtml(TERMINAL_STATE_BOUNDARY)}</p>
     </section>
     <section>
+      <h2>Queue boundary</h2>
+      <ul>
+        <li><strong>Live queue:</strong> pending and <code>approved_waiting_retry</code> stay here because the operator still has a live next step.</li>
+        <li><strong>Approved handoff:</strong> <code>approved_waiting_retry</code> means retry the same tool call once, then inspect <a href="${AUDIT_ROUTE_PATH}">Audit</a> for the ending.</li>
+        <li><strong>Non-live states:</strong> denied, expired, consumed, and evicted leave this page. Use <a href="${AUDIT_ROUTE_PATH}">Audit</a> to explain how those earlier approval paths closed.</li>
+      </ul>
+    </section>
+    <section>
       <h2>How to read live states</h2>
       <ul>
         ${renderStateGuide()}
       </ul>
     </section>
     <section>
-      <h2>Live approval queue</h2>
-      <p>Each item explains the risky action, why ClawGuard paused it, the affected scope, and the next operator move without changing the underlying approval state machine.</p>
-      ${items || `<p>No live approval items right now. Return to <a href="${DASHBOARD_ROUTE_PATH}">Dashboard</a> for the broader install-demo summary or open <a href="${AUDIT_ROUTE_PATH}">Audit</a> to explain earlier terminal states.</p>`}
+      <h2>Decision needed now</h2>
+      <p>These live items still need a human approve-or-deny choice on this page before the flow can move anywhere else.</p>
+      ${pendingItems || `<p>No live approvals are waiting for a decision right now. Open <a href="${AUDIT_ROUTE_PATH}">Audit</a> if you need to explain how earlier approval flows already closed.</p>`}
+    </section>
+    <section>
+      <h2>Approved, waiting for retry</h2>
+      <p>This is the approvals-to-audit handoff. The operator retriggers the same fake-only tool call outside this page, then checks Audit for the final allowed, blocked, or failed outcome.</p>
+      ${approvedWaitingRetryItems || `<p>No approved actions are waiting for their single retry right now. When one appears, the next steps stay lightweight: retry once, then jump to <a href="${AUDIT_ROUTE_PATH}">Audit</a> for closure.</p>`}
+    </section>
+    <section>
+      <h2>Not shown here</h2>
+      <p>${escapeHtml(TERMINAL_STATE_BOUNDARY)} Start from <a href="${AUDIT_ROUTE_PATH}">Audit</a> when the question is "how did this earlier approval path end?" rather than "what live operator action is still waiting?"</p>
     </section>
   </body>
 </html>`;

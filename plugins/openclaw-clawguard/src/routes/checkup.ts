@@ -9,6 +9,7 @@ import {
   renderClawGuardNav,
   renderControlSurfaceIntro,
   renderInstallDemoPostureNote,
+  renderOperatorActionLink,
 } from './shared.js';
 
 function renderEvidenceValue(value: unknown): string {
@@ -46,7 +47,8 @@ function renderCheckupPage(state: ClawGuardState): string {
           <h3>${escapeHtml(summarizeCheckupStatus(item.status))} — ${escapeHtml(item.label)}</h3>
           <p>${escapeHtml(item.explanation)}</p>
           ${renderEvidence(item.evidence)}
-          <p><strong>Follow-up:</strong> <a href="${item.recommendedAction.href}">${escapeHtml(item.recommendedAction.label)}</a> — ${escapeHtml(item.recommendedAction.summary)}</p>
+          <p><strong>Follow-up:</strong> ${renderOperatorActionLink(item.recommendedAction, item.recommendedAction.label)} — ${escapeHtml(item.recommendedAction.summary)}</p>
+          <p><small>Action ID: <code>${escapeHtml(item.recommendedAction.actionId)}</code> · Opens ${escapeHtml(item.recommendedAction.surface.label)} · Operator intent: ${escapeHtml(item.recommendedAction.intent)}</small></p>
         </article>
       `,
     )
@@ -56,7 +58,9 @@ function renderCheckupPage(state: ClawGuardState): string {
       (action) => `
         <li id="action-${escapeHtml(action.id)}">
           <strong>${escapeHtml(action.title)}</strong> — ${escapeHtml(action.description)}
-          <a href="${action.href}">${escapeHtml(action.cta)}</a>
+          ${renderOperatorActionLink(action, action.cta)}
+          <br />
+          <small>Action ID: <code>${escapeHtml(action.id)}</code> · Opens ${escapeHtml(action.surface.label)} · Intent: ${escapeHtml(action.intent)}</small>
           <br />
           <small>Linked checkup item: ${action.relatedCheckupItemIds.map((itemId) => escapeHtml(itemId)).join(', ')}</small>
         </li>
@@ -87,7 +91,9 @@ function renderCheckupPage(state: ClawGuardState): string {
     <section>
       <h2>Main drag and fix first</h2>
       <p><strong>Main drag:</strong> ${escapeHtml(payload.checkup.mainDrag.label)} — ${escapeHtml(payload.checkup.mainDrag.explanation)}</p>
-      <p><strong>Fix first:</strong> <a href="${payload.checkup.firstFix.href}">${escapeHtml(payload.checkup.firstFix.title)}</a> — ${escapeHtml(payload.checkup.firstFix.why)}</p>
+      <p><small>Mapped action: ${renderOperatorActionLink(payload.checkup.mainDrag.recommendedAction, payload.checkup.mainDrag.recommendedAction.label)} · Action ID: <code>${escapeHtml(payload.checkup.mainDrag.recommendedAction.actionId)}</code> · Opens ${escapeHtml(payload.checkup.mainDrag.recommendedAction.surface.label)} · Intent: ${escapeHtml(payload.checkup.mainDrag.recommendedAction.intent)}</small></p>
+      <p><strong>Fix first:</strong> ${renderOperatorActionLink(payload.checkup.firstFix, payload.checkup.firstFix.title)} — ${escapeHtml(payload.checkup.firstFix.why)}</p>
+      <p><small>Action ID: <code>${escapeHtml(payload.checkup.firstFix.actionId)}</code> · Opens ${escapeHtml(payload.checkup.firstFix.surface.label)} · Linked item: <code>${escapeHtml(payload.checkup.firstFix.checkupItemId)}</code> · Intent: ${escapeHtml(payload.checkup.firstFix.intent)}</small></p>
       <p><small>${escapeHtml(INSTALL_DEMO.limitations)}</small></p>
     </section>
     <section>
