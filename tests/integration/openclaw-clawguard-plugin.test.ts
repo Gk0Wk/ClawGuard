@@ -1523,6 +1523,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(approvalsHtmlResponse.body).toContain(
       'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
     );
+    expect(approvalsHtmlResponse.body).toContain('Route mode:</strong> explicit route');
     expect(auditHtmlResponse.statusCode).toBe(200);
     expect(auditHtmlResponse.body).toContain('pending_action_created');
     expect(auditHtmlResponse.body).toContain('Route mode:</strong> explicit route');

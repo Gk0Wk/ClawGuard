@@ -146,6 +146,48 @@ function describeOutboundRoute(entry: PendingAction): string | undefined {
   return route;
 }
 
+function describeOutboundRouteMode(entry: PendingAction): string | undefined {
+  if (entry.tool_name !== 'message' && entry.tool_name !== 'sessions_send') {
+    return undefined;
+  }
+
+  const candidates = [
+    entry.action_title,
+    entry.guidance_summary,
+    entry.reason_summary,
+    entry.impact_scope,
+  ];
+
+  for (const candidate of candidates) {
+    const routeMode = readOutboundRouteMode(candidate);
+    if (routeMode) {
+      return `${routeMode} route`;
+    }
+  }
+
+  return undefined;
+}
+
+function readOutboundRouteMode(value: string | undefined): 'explicit' | 'implicit' | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const textualMatch = value.match(/\bRoute mode(?:=|:)\s*(explicit|implicit)\b/i);
+  if (textualMatch?.[1]) {
+    const routeMode = textualMatch[1].toLowerCase();
+    return routeMode === 'explicit' || routeMode === 'implicit' ? routeMode : undefined;
+  }
+
+  const titleMatch = value.match(/\((explicit|implicit) route\)/i);
+  if (titleMatch?.[1]) {
+    const routeMode = titleMatch[1].toLowerCase();
+    return routeMode === 'explicit' || routeMode === 'implicit' ? routeMode : undefined;
+  }
+
+  return undefined;
+}
+
 function describeOperatorAction(entry: PendingAction, approvalTtlSeconds: number): string {
   if (entry.status === 'pending') {
     return `Approve once only if this exact ${entry.tool_name} action is expected, or deny it to keep the risky path blocked.`;
@@ -188,6 +230,7 @@ function renderPendingItem(entry: PendingAction, approvalTtlSeconds: number): st
   const params = escapeHtml(JSON.stringify(entry.params, null, 2));
   const auditFlowLink = renderAuditFlowLink(entry.pending_action_id, AUDIT_REPLAY_ACTION.label);
   const outboundRoute = describeOutboundRoute(entry);
+  const outboundRouteMode = describeOutboundRouteMode(entry);
   const actions =
     entry.status === 'pending'
       ? `
@@ -210,6 +253,7 @@ function renderPendingItem(entry: PendingAction, approvalTtlSeconds: number): st
       <p><strong>Why it is risky:</strong> ${escapeHtml(entry.reason_summary)}</p>
       <p><strong>Guidance:</strong> ${escapeHtml(describeRisk(entry))}</p>
       ${outboundRoute ? `<p><strong>Outbound route:</strong> ${escapeHtml(outboundRoute)}</p>` : ''}
+      ${outboundRouteMode ? `<p><strong>Route mode:</strong> ${escapeHtml(outboundRouteMode)}</p>` : ''}
       <p><strong>Impact scope:</strong> ${escapeHtml(describeImpactScope(entry))}</p>
       <p><strong>What the operator can do now:</strong> ${escapeHtml(describeOperatorAction(entry, approvalTtlSeconds))}</p>
       <p><strong>Where to look next:</strong> ${escapeHtml(describeWhereToLookNext(entry))}</p>
