@@ -665,6 +665,10 @@ export function summarizeStructuredToolResult(result: unknown): string | undefin
     readOptionalString(record.operationType) ??
     readOptionalString(record.operation_type);
   const status = readOptionalString(record.status);
+  const created = summarizeStructuredResultField(record, 'created');
+  const updated = summarizeStructuredResultField(record, 'updated');
+  const deleted = summarizeStructuredResultField(record, 'deleted');
+  const renamed = summarizeStructuredResultField(record, 'renamed');
   const paths = [
     readOptionalString(record.path),
     readOptionalString(record.filePath),
@@ -677,6 +681,10 @@ export function summarizeStructuredToolResult(result: unknown): string | undefin
       summary,
       operationType ? `operation type=${operationType}` : undefined,
       status ? `tool result status=${status}` : undefined,
+      created,
+      updated,
+      deleted,
+      renamed,
       paths.length > 0 ? `paths=${paths.join(', ')}` : undefined,
     ].filter((value): value is string => Boolean(value));
 
@@ -690,6 +698,10 @@ export function summarizeStructuredToolResult(result: unknown): string | undefin
   const segments = [
     operationType ? `operation type=${operationType}` : undefined,
     status ? `tool result status=${status}` : undefined,
+    created,
+    updated,
+    deleted,
+    renamed,
     paths.length > 0 ? `paths=${paths.join(', ')}` : undefined,
   ].filter((value): value is string => Boolean(value));
 
@@ -884,6 +896,24 @@ function readOptionalStringArray(value: unknown): string[] {
   return value
     .map((entry) => readOptionalString(entry))
     .filter((entry): entry is string => Boolean(entry));
+}
+
+function summarizeStructuredResultField(
+  record: Record<string, unknown>,
+  fieldName: 'created' | 'updated' | 'deleted' | 'renamed',
+): string | undefined {
+  const value = record[fieldName];
+  const normalizedValue = readOptionalString(value);
+  if (normalizedValue) {
+    return `${fieldName}=${normalizedValue}`;
+  }
+
+  const normalizedValues = readOptionalStringArray(value);
+  if (normalizedValues.length > 0) {
+    return `${fieldName}=${normalizedValues.join(', ')}`;
+  }
+
+  return undefined;
 }
 
 function normalizeToolName(toolName: string): string {
