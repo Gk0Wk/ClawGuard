@@ -479,7 +479,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         packageNamePosture: 'metadata and future compatibility placeholder only',
       },
     });
-    expect(surface).toEqual(expect.arrayContaining(['README.md', 'openclaw.plugin.json', 'dist']));
+    expect(surface).toEqual(
+      expect.arrayContaining(['README.md', 'openclaw.plugin.json', 'package.json', 'src']),
+    );
+    expect(surface).not.toContain('node_modules');
 
     expect(pluginManifest).toMatchObject({
       id: 'clawguard',
