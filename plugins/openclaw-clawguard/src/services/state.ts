@@ -1053,26 +1053,27 @@ function summarizeStructuredResultFieldValue(value: unknown): string | undefined
 function summarizeTopLevelStructuredResultRename(record: Record<string, unknown>): string | undefined {
   const primaryPair = readStructuredResultTopLevelPathPair(record, 'fromPath', 'toPath');
   const secondaryPair = readStructuredResultTopLevelPathPair(record, 'oldPath', 'newPath');
+  const tertiaryPair = readStructuredResultTopLevelPathPair(record, 'sourcePath', 'targetPath');
 
-  if (primaryPair && secondaryPair) {
-    return primaryPair === secondaryPair ? `renamed=${primaryPair}` : undefined;
+  const uniquePairs = Array.from(
+    new Set([primaryPair, secondaryPair, tertiaryPair].filter((pair): pair is string => Boolean(pair))),
+  );
+
+  if (uniquePairs.length === 0) {
+    return undefined;
   }
 
-  if (primaryPair) {
-    return `renamed=${primaryPair}`;
+  if (uniquePairs.length !== 1) {
+    return undefined;
   }
 
-  if (secondaryPair) {
-    return `renamed=${secondaryPair}`;
-  }
-
-  return undefined;
+  return `renamed=${uniquePairs[0]}`;
 }
 
 function readStructuredResultTopLevelPathPair(
   record: Record<string, unknown>,
-  fromKey: 'fromPath' | 'oldPath',
-  toKey: 'toPath' | 'newPath',
+  fromKey: 'fromPath' | 'oldPath' | 'sourcePath',
+  toKey: 'toPath' | 'newPath' | 'targetPath',
 ): string | undefined {
   const fromPath = readOptionalString(record[fromKey]);
   const toPath = readOptionalString(record[toKey]);
@@ -1128,8 +1129,20 @@ function summarizeStructuredResultPathPairValue(value: unknown): string | undefi
   }
 
   const record = value as Record<string, unknown>;
-  const fromPath = readOptionalStringFromKeys(record, ['fromPath', 'oldPath', 'from', 'old']);
-  const toPath = readOptionalStringFromKeys(record, ['toPath', 'newPath', 'to', 'new']);
+  const fromPath = readOptionalStringFromKeys(record, [
+    'fromPath',
+    'oldPath',
+    'sourcePath',
+    'from',
+    'old',
+  ]);
+  const toPath = readOptionalStringFromKeys(record, [
+    'toPath',
+    'newPath',
+    'targetPath',
+    'to',
+    'new',
+  ]);
 
   if (fromPath && toPath) {
     return `${fromPath} -> ${toPath}`;

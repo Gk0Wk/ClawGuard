@@ -1334,6 +1334,35 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
   });
 
+  it('keeps sourcePath/targetPath top-level rename closure summaries on the existing rename-like path', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const persistHandler = createToolResultPersistHandler(state);
+    const { event, context } = createWorkspaceWriteEvent({
+      path: 'src\\templates\\deploy-template.yml',
+      content: 'name: Deploy\n',
+    });
+
+    expect(beforeHandler(event, context)).toBeUndefined();
+
+    persistHandler(
+      {
+        ...event,
+        result: {
+          status: 'completed',
+          persisted: true,
+          sourcePath: 'src\\templates\\deploy-template.yml',
+          targetPath: '.github\\workflows\\deploy-template.yml',
+        },
+      },
+      context,
+    );
+
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
+      'Result detail: tool result status=completed; workspace result state=rename-like via renamed; renamed=src\\templates\\deploy-template.yml -> .github\\workflows\\deploy-template.yml',
+    );
+  });
+
   it('keeps incomplete or conflicting top-level workspace path pairs on the existing closure logic', () => {
     const state = createClawGuardState();
     const beforeHandler = createBeforeToolCallHandler(state);
@@ -1403,6 +1432,39 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
       'Result detail: tool result status=completed; workspace result state=rename-like via renamed; renamed=src\\templates\\ci-template.yml -> .github\\workflows\\ci-template.yml, src\\templates\\release-template.yml -> .github\\workflows\\release-template.yml',
+    );
+  });
+
+  it('summarizes renamed entries that use sourcePath/targetPath keys in the final audit trail', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const persistHandler = createToolResultPersistHandler(state);
+    const { event, context } = createWorkspaceWriteEvent({
+      path: 'src\\templates\\ops-template.yml',
+      content: 'name: Ops\n',
+    });
+
+    expect(beforeHandler(event, context)).toBeUndefined();
+
+    persistHandler(
+      {
+        ...event,
+        result: {
+          status: 'completed',
+          persisted: true,
+          renamed: [
+            {
+              sourcePath: 'src\\templates\\ops-template.yml',
+              targetPath: '.github\\workflows\\ops-template.yml',
+            },
+          ],
+        },
+      },
+      context,
+    );
+
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
+      'Result detail: tool result status=completed; workspace result state=rename-like via renamed; renamed=src\\templates\\ops-template.yml -> .github\\workflows\\ops-template.yml',
     );
   });
 
@@ -1647,6 +1709,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(auditHtmlResponse.body).toContain(
       'Latest outbound route in recent replay:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
     );
+    expect(auditHtmlResponse.body).toContain('Latest outbound route mode in recent replay:');
+    expect(auditHtmlResponse.body).toContain(
+      'Latest outbound route mode in recent replay:</strong> explicit <small>(parsed from the latest replay detail, not the live queue)</small>',
+    );
     expect(auditHtmlResponse.body).toContain(
       'parsed from the latest replay detail, not the live queue',
     );
@@ -1780,12 +1846,14 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       timeline: {
         latest?: {
           latestOutboundRoute?: string;
+          latestOutboundRouteMode?: string;
           latestWorkspaceResultState?: string;
         };
       };
     };
     expect(auditPayload.timeline.latest).toEqual({
       latestOutboundRoute: 'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+      latestOutboundRouteMode: 'explicit',
       latestWorkspaceResultState: 'insert',
     });
   });
@@ -1938,6 +2006,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(auditHtmlResponse.statusCode).toBe(200);
     expect(auditHtmlResponse.body).toContain('ClawGuard audit timeline');
     expect(auditHtmlResponse.body).not.toContain('Latest outbound route in recent replay:');
+    expect(auditHtmlResponse.body).not.toContain('Latest outbound route mode in recent replay:');
     expect(auditHtmlResponse.body).not.toContain('Latest workspace result state in recent replay:');
   });
 

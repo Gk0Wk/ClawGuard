@@ -99,6 +99,7 @@ type AuditTimelinePayload = {
     readonly flows: TimelineFlow[];
     readonly latest?: {
       readonly latestOutboundRoute?: string;
+      readonly latestOutboundRouteMode?: RouteMode;
       readonly latestWorkspaceResultState?: string;
     };
   };
@@ -246,6 +247,7 @@ function buildAuditPayload(state: ClawGuardState): AuditTimelinePayload {
   const audit = state.audit.list();
   const flows = buildTimelineFlows(audit);
   const latestOutboundRoute = findLatestOutboundRoute(flows);
+  const latestOutboundRouteMode = findLatestOutboundRouteMode(flows);
   const latestWorkspaceResultState = findLatestWorkspaceResultState(flows);
   const flowOutcomes = flows.reduce(
     (summary, flow) => {
@@ -312,10 +314,11 @@ function buildAuditPayload(state: ClawGuardState): AuditTimelinePayload {
           ...guide,
         }),
       ),
-      ...(latestOutboundRoute || latestWorkspaceResultState
+      ...(latestOutboundRoute || latestOutboundRouteMode || latestWorkspaceResultState
         ? {
             latest: {
               ...(latestOutboundRoute ? { latestOutboundRoute } : {}),
+              ...(latestOutboundRouteMode ? { latestOutboundRouteMode } : {}),
               ...(latestWorkspaceResultState ? { latestWorkspaceResultState } : {}),
             },
           }
@@ -449,6 +452,16 @@ function findLatestOutboundRoute(flows: TimelineFlow[]): string | undefined {
   for (const flow of flows) {
     if (flow.outboundRoute) {
       return flow.outboundRoute;
+    }
+  }
+
+  return undefined;
+}
+
+function findLatestOutboundRouteMode(flows: TimelineFlow[]): RouteMode | undefined {
+  for (const flow of flows) {
+    if (flow.routeMode) {
+      return flow.routeMode;
     }
   }
 
@@ -669,6 +682,7 @@ function formatTimestamp(value: string): string {
 
 function renderAuditPage(payload: AuditTimelinePayload): string {
   const latestOutboundRoute = findLatestOutboundRoute(payload.timeline.flows);
+  const latestOutboundRouteMode = findLatestOutboundRouteMode(payload.timeline.flows);
   const latestWorkspaceResultState = findLatestWorkspaceResultState(payload.timeline.flows);
   const flowCards = payload.timeline.flows
     .map(
@@ -802,6 +816,7 @@ function renderAuditPage(payload: AuditTimelinePayload): string {
       <p>Replay the fake-only audit entries ClawGuard already captured. Dashboard is the status view, Checkup is the explanation view, Approvals is the action view, and Audit reconstructs what actually happened over time.</p>
       <p>${renderAuditLiveQueueHintCopy()}</p>
       ${latestOutboundRoute ? `<p><strong>Latest outbound route in recent replay:</strong> ${escapeHtml(latestOutboundRoute)} <small>(parsed from the latest replay detail, not the live queue)</small></p>` : ''}
+      ${latestOutboundRouteMode ? `<p><strong>Latest outbound route mode in recent replay:</strong> ${escapeHtml(latestOutboundRouteMode)} <small>(parsed from the latest replay detail, not the live queue)</small></p>` : ''}
       ${latestWorkspaceResultState ? `<p><strong>Latest workspace result state in recent replay:</strong> ${escapeHtml(latestWorkspaceResultState)} <small>(parsed from the latest replay detail, not the live queue)</small></p>` : ''}
       <p><strong>Current posture:</strong> ${escapeHtml(INSTALL_DEMO.demoPosture)}</p>
       <p><strong>Navigation posture:</strong> ${escapeHtml(INSTALL_DEMO.navigationPosture)}</p>
