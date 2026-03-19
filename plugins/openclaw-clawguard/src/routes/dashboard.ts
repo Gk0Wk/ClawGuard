@@ -12,6 +12,7 @@ import {
   createRecommendedOperatorAction,
   renderClawGuardNav,
   renderControlSurfaceIntro,
+  renderCoverageMatrix,
   renderInstallDemoPostureNote,
   renderLifecycleHandoffCopy,
   renderOperatorActionLink,
@@ -417,6 +418,8 @@ function renderDashboardPage(state: ClawGuardState): string {
       <p>Recommended install: <code>${INSTALL_DEMO.recommendedCommand}</code></p>
       <p>Current alpha scope: ${INSTALL_DEMO.coverage}</p>
       <p>Current limitation: ${INSTALL_DEMO.limitations}</p>
+      <h3>Current bounded coverage</h3>
+      ${renderCoverageMatrix()}
     </section>
     <section>
       <h2>Top attention items right now</h2>

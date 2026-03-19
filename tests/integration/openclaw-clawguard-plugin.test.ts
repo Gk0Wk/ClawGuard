@@ -1253,6 +1253,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain(
       'Blocked host outbound delivery before channel send.',
     );
+    expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain('Route mode=explicit.');
     resultHandler(
       {
         to: event.to,
@@ -1279,6 +1280,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain(
       'Direct host outbound cannot enter the pending approval loop',
     );
+    expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain('Route mode=explicit.');
   });
 
   it('surfaces explicit outbound route mode through approvals and audit for queued message deliveries', () => {
@@ -1870,6 +1872,13 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(dashboardHtmlResponse.body).toContain('id="checkup-install-demo-posture"');
     expect(dashboardHtmlResponse.body).toContain('Coverage remains install-demo only');
     expect(dashboardHtmlResponse.body).toContain('There is no stock Control UI Security tab for this alpha');
+    expect(dashboardHtmlResponse.body).toContain('Current bounded coverage');
+    expect(dashboardHtmlResponse.body).toContain('Exec</strong> (<code>exec</code>)');
+    expect(dashboardHtmlResponse.body).toContain('Approval demo path only.');
+    expect(dashboardHtmlResponse.body).toContain('Outbound</strong> (<code>outbound</code>)');
+    expect(dashboardHtmlResponse.body).toContain('host-level message_sending stays on the hard-block path');
+    expect(dashboardHtmlResponse.body).toContain('Workspace</strong> (<code>workspace</code>)');
+    expect(dashboardHtmlResponse.body).toContain('tool_result_persist fallback for result closure');
     expect(dashboardHtmlResponse.body).toContain('Quick actions');
     expect(dashboardHtmlResponse.body).toContain('id="action-review-approvals"');
     expect(dashboardHtmlResponse.body).toContain('id="action-review-demo-posture"');
@@ -2259,10 +2268,17 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
     expect(checkupHtmlResponse.body).toContain('/plugins/clawguard/dashboard');
     expect(checkupHtmlResponse.body).toContain('Top status summary');
+    expect(checkupHtmlResponse.body).toContain('Current bounded coverage');
+    expect(checkupHtmlResponse.body).toContain(
+      'This is the fixed install-demo legend for the current product surface.',
+    );
     expect(checkupHtmlResponse.body).toContain('Main drag and fix first');
     expect(checkupHtmlResponse.body).toContain('All checkup items');
     expect(checkupHtmlResponse.body).toContain('Evidence available right now');
     expect(checkupHtmlResponse.body).toContain('Quick follow-up actions');
+    expect(checkupHtmlResponse.body).toContain('Exec</strong> (<code>exec</code>)');
+    expect(checkupHtmlResponse.body).toContain('Outbound</strong> (<code>outbound</code>)');
+    expect(checkupHtmlResponse.body).toContain('Workspace</strong> (<code>workspace</code>)');
     expect(checkupHtmlResponse.body).toContain(
       'When an item is still live, continue to Approvals to act on it; when it has already closed, continue to Audit for the final replay trail.',
     );

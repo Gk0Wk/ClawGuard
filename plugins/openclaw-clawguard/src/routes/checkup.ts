@@ -8,6 +8,7 @@ import {
   INSTALL_DEMO,
   renderClawGuardNav,
   renderControlSurfaceIntro,
+  renderCoverageMatrix,
   renderInstallDemoPostureNote,
   renderLifecycleHandoffCopy,
   renderOperatorActionLink,
@@ -88,6 +89,11 @@ function renderCheckupPage(state: ClawGuardState): string {
       <p>${escapeHtml(payload.safetyStatus.explanation)}</p>
       <p><strong>Why this status:</strong> ${escapeHtml(payload.safetyStatus.why)}</p>
       <p><a href="${DASHBOARD_ROUTE_PATH}">Back to dashboard summary</a></p>
+    </section>
+    <section>
+      <h2>Current bounded coverage</h2>
+      <p>This is the fixed install-demo legend for the current product surface. It explains what each active lane does today without claiming broader runtime coverage.</p>
+      ${renderCoverageMatrix()}
     </section>
     <section>
       <h2>Main drag and fix first</h2>

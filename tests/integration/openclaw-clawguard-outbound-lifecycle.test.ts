@@ -159,6 +159,7 @@ describe('OpenClaw ClawGuard outbound lifecycle', () => {
     expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
       'Final outbound outcome allowed after host delivery.',
     );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain('Route mode=explicit.');
   });
 
   it('hard-blocks direct host outbound when the content would otherwise require approval', () => {
@@ -213,5 +214,6 @@ describe('OpenClaw ClawGuard outbound lifecycle', () => {
     expect(getLatestAuditByKind(state, 'failed')?.detail).toContain(
       'Final outbound outcome failed after host delivery.',
     );
+    expect(getLatestAuditByKind(state, 'failed')?.detail).toContain('Route mode=explicit.');
   });
 });

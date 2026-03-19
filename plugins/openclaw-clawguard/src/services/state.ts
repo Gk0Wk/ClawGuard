@@ -605,9 +605,19 @@ function buildHostOutboundBlockDetail(artifacts: EvaluationArtifacts): string {
   const deliveryPosture =
     artifacts.policy_decision.decision === ResponseAction.ApproveRequired
       ? 'Direct host outbound cannot enter the pending approval loop, so ClawGuard kept the host send on the hard-block path.'
-      : 'Direct host outbound matched an immediate block rule.'
+      : 'Direct host outbound matched an immediate block rule.';
+  const routeMode = artifacts.evaluation_input.destination?.target_mode;
 
-  return `Blocked host outbound delivery before channel send. ${deliveryPosture} ${artifacts.policy_decision.reason} ${artifacts.risk_event.summary}`.trim();
+  return [
+    'Blocked host outbound delivery before channel send.',
+    routeMode ? `Route mode=${routeMode}.` : undefined,
+    deliveryPosture,
+    artifacts.policy_decision.reason,
+    artifacts.risk_event.summary,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+    .trim();
 }
 
 function buildHostOutboundSummary(input: MessageSentSnapshot): string {
@@ -760,8 +770,11 @@ function buildFinalOutcomeDetail(
 function buildHostOutboundFinalOutcomeDetail(
   artifacts: ReturnType<typeof applyPostExecutionResultToEvaluationArtifacts>,
 ): string {
+  const routeMode = artifacts.evaluation_input.destination?.target_mode;
+
   return [
     `Final outbound outcome ${artifacts.audit_record.final_status} after host delivery.`,
+    routeMode ? `Route mode=${routeMode}.` : undefined,
     artifacts.policy_decision.reason,
     artifacts.risk_event.summary,
     artifacts.evaluation_input.agent_event?.summary ? `Result detail: ${artifacts.evaluation_input.agent_event.summary}` : undefined,

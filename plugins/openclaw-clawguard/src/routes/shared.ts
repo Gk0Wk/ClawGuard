@@ -51,6 +51,12 @@ type ControlSurfacePage = {
   readonly intro: string;
 };
 
+type CoverageLane = {
+  readonly id: 'exec' | 'outbound' | 'workspace';
+  readonly label: string;
+  readonly summary: string;
+};
+
 export type ControlSurfaceHandoffMode = 'dashboard' | 'checkup';
 
 export const INSTALL_DEMO = {
@@ -103,6 +109,26 @@ const AUDIT_DIRECT_HANDOFF_COPY =
   'This replay did not originate from Approvals, so Audit is the primary place to inspect the recorded ending.';
 const AUDIT_LIVE_QUEUE_HINT_COPY =
   `If a replay says <strong>Waiting for decision</strong> or <strong>Waiting for approved retry</strong>, the flow is still live in <a href="${APPROVALS_ROUTE_PATH}">Approvals</a>. Once it leaves the live queue, inspect the final outcome here.`;
+const COVERAGE_LANES: readonly CoverageLane[] = [
+  {
+    id: 'exec',
+    label: 'Exec',
+    summary:
+      'Approval demo path only. Risky command execution can queue for review, then replay once after approval.',
+  },
+  {
+    id: 'outbound',
+    label: 'Outbound',
+    summary:
+      'Tool-level message and sessions_send can queue approvals, while host-level message_sending stays on the hard-block path and only closes through message_sent after a send actually leaves the host.',
+  },
+  {
+    id: 'workspace',
+    label: 'Workspace',
+    summary:
+      'Limited to write, edit, and apply_patch with alpha-safe heuristics plus a workspace-only tool_result_persist fallback for result closure.',
+  },
+] as const;
 
 const OPERATOR_ACTIONS: Record<OperatorActionId, OperatorActionDefinition> = {
   'review-approvals': {
@@ -224,6 +250,15 @@ export function renderLifecycleHandoffCopy(mode: ControlSurfaceHandoffMode): str
     case 'checkup':
       return 'When an item is still live, continue to Approvals to act on it; when it has already closed, continue to Audit for the final replay trail.';
   }
+}
+
+export function renderCoverageMatrix(): string {
+  const items = COVERAGE_LANES.map(
+    (lane) =>
+      `<li><strong>${lane.label}</strong> (<code>${lane.id}</code>) — ${escapeHtml(lane.summary)}</li>`,
+  ).join('\n');
+
+  return `<ul>${items}</ul>`;
 }
 
 export function renderApprovalsQueueBoundaryCopy(): string {
