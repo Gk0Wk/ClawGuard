@@ -1727,6 +1727,29 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(checkupHtmlResponse.body).not.toContain('Outbound route:</strong>');
   });
 
+  it('keeps the audit hero conservative when recent replay has no outbound route or workspace result state', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const auditRoute = createAuditRoute(state);
+    const { event, context } = createRiskyExecEvent('rm -rf temp');
+
+    expect(beforeHandler(event, context)).toMatchObject({ block: true });
+
+    const auditHtmlResponse = createMockResponse();
+    auditRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/audit',
+      } as never,
+      auditHtmlResponse as never,
+    );
+
+    expect(auditHtmlResponse.statusCode).toBe(200);
+    expect(auditHtmlResponse.body).toContain('ClawGuard audit timeline');
+    expect(auditHtmlResponse.body).not.toContain('Latest outbound route in recent replay:');
+    expect(auditHtmlResponse.body).not.toContain('Latest workspace result state in recent replay:');
+  });
+
   it('explains host-level direct outbound as an audit-only lane in the replay view', () => {
     const state = createClawGuardState();
     const sendingHandler = createMessageSendingHandler(state);
