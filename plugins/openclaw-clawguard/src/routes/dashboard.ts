@@ -98,9 +98,81 @@ function describeRecommendedAction(
   return `Go to ${action.surface.label} and ${detail}`;
 }
 
+function summarizePendingActionHeadline(entry: PendingAction): string {
+  return entry.action_title ?? entry.tool_name;
+}
+
+function isOutboundPendingAction(entry: PendingAction): boolean {
+  return entry.tool_name === 'message' || entry.tool_name === 'sessions_send';
+}
+
+function readPendingOutboundRouteMode(entry: PendingAction): 'explicit' | 'implicit' | undefined {
+  if (!isOutboundPendingAction(entry)) {
+    return undefined;
+  }
+
+  const candidates = [
+    entry.action_title,
+    entry.guidance_summary,
+    entry.reason_summary,
+    entry.impact_scope,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+
+    const textualMatch = candidate.match(/\bRoute mode(?:=|:)\s*(explicit|implicit)\b/i);
+    if (textualMatch?.[1]) {
+      const routeMode = textualMatch[1].toLowerCase();
+      return routeMode === 'explicit' || routeMode === 'implicit' ? routeMode : undefined;
+    }
+
+    const titleMatch = candidate.match(/\((explicit|implicit) route\)/i);
+    if (titleMatch?.[1]) {
+      const routeMode = titleMatch[1].toLowerCase();
+      return routeMode === 'explicit' || routeMode === 'implicit' ? routeMode : undefined;
+    }
+  }
+
+  return undefined;
+}
+
+function describePendingRouteSnippet(entry: PendingAction): string | undefined {
+  if (!isOutboundPendingAction(entry)) {
+    return undefined;
+  }
+
+  const routeMode = readPendingOutboundRouteMode(entry);
+  if (routeMode) {
+    return `Route mode: ${routeMode} route`;
+  }
+
+  const route = entry.params.to;
+  if (typeof route === 'string' && route.trim().length > 0) {
+    return `Outbound route: ${route}`;
+  }
+
+  return undefined;
+}
+
+function summarizePendingActionPreview(entry: PendingAction): string {
+  const routeSnippet = describePendingRouteSnippet(entry);
+  const headline = summarizePendingActionHeadline(entry);
+
+  return routeSnippet ? `${headline} · ${routeSnippet}` : headline;
+}
+
 function renderPendingItem(entry: PendingAction): string {
+  const routeSnippet = describePendingRouteSnippet(entry);
+
   return `<li>
-    <strong>${escapeHtml(entry.tool_name)}</strong> — ${escapeHtml(entry.reason_summary)}
+    <strong>${escapeHtml(summarizePendingActionHeadline(entry))}</strong>
+    <br />
+    <small>${escapeHtml(entry.tool_name)}${routeSnippet ? ` · ${escapeHtml(routeSnippet)}` : ''}</small>
+    <br />
+    <small>Why it is risky: ${escapeHtml(entry.reason_summary)}</small>
     <br />
     <small>Status: ${escapeHtml(entry.status)} · Expires: ${escapeHtml(entry.expires_at)} · Pending ID: ${escapeHtml(entry.pending_action_id)}</small>
   </li>`;
@@ -214,7 +286,7 @@ export function createDashboardPayload(state: ClawGuardState) {
       passed: approvalsNeedingDecision.length === 0,
       explanation:
         approvalsNeedingDecision.length > 0
-          ? `${pluralize(approvalsNeedingDecision.length, 'live approval')} ${approvalsNeedingDecision.length === 1 ? 'is' : 'are'} still waiting for a human decision. Latest: ${firstPending ? `${firstPending.tool_name} — ${firstPending.reason_summary}` : 'review the queue now'}.`
+          ? `${pluralize(approvalsNeedingDecision.length, 'live approval')} ${approvalsNeedingDecision.length === 1 ? 'is' : 'are'} still waiting for a human decision. Latest: ${firstPending ? `${summarizePendingActionPreview(firstPending)} — ${firstPending.reason_summary}` : 'review the queue now'}.`
           : 'No live approvals are waiting for a human decision.',
       recommendedAction: createRecommendedOperatorAction('review-approvals', {
         summary: describeRecommendedAction(

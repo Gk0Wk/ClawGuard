@@ -2228,6 +2228,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(dashboardHtmlResponse.body).toContain('id="action-review-demo-posture"');
     expect(dashboardHtmlResponse.body).toContain('Awaiting decision: <strong>1</strong>');
     expect(dashboardHtmlResponse.body).toContain('Live total: <strong>1</strong>');
+    expect(dashboardHtmlResponse.body).toContain(pending.action_title);
     expect(dashboardHtmlResponse.body).toContain(pending.pending_action_id);
     expect(dashboardHtmlResponse.body).toContain('pending_action_created');
     expect(dashboardHtmlResponse.body).toContain('/plugins/clawguard/approvals');
@@ -2369,7 +2370,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
             label: 'Approval queue needs a decision',
             status: 'urgent',
             passed: false,
-            explanation: `1 live approval is still waiting for a human decision. Latest: ${pending.tool_name} — ${pending.reason_summary}.`,
+            explanation: `1 live approval is still waiting for a human decision. Latest: ${pending.action_title} — ${pending.reason_summary}.`,
             recommendedAction: expect.objectContaining({
               actionId: 'review-approvals',
               label: 'Open approvals queue',
@@ -2428,7 +2429,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
           itemId: 'approval-queue',
           label: 'Approval queue needs a decision',
           status: 'urgent',
-          explanation: `1 live approval is still waiting for a human decision. Latest: ${pending.tool_name} — ${pending.reason_summary}.`,
+          explanation: `1 live approval is still waiting for a human decision. Latest: ${pending.action_title} — ${pending.reason_summary}.`,
           recommendedAction: {
             actionId: 'review-approvals',
             label: 'Open approvals queue',
@@ -2479,7 +2480,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
           actionId: 'review-approvals',
           severity: 'urgent',
           title: 'Approval queue needs a decision',
-          summary: `1 live approval is still waiting for a human decision. Latest: ${pending.tool_name} — ${pending.reason_summary}.`,
+          summary: `1 live approval is still waiting for a human decision. Latest: ${pending.action_title} — ${pending.reason_summary}.`,
           actionLabel: 'Open approvals queue',
           href: '/plugins/clawguard/approvals',
         }),
@@ -2657,6 +2658,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(checkupHtmlResponse.body).toContain('Outbound</strong>: 0');
     expect(checkupHtmlResponse.body).toContain('Workspace</strong>: 0');
     expect(checkupHtmlResponse.body).toContain('Main drag and fix first');
+    expect(checkupHtmlResponse.body).toContain(pending.action_title);
     expect(checkupHtmlResponse.body).toContain('Lane pressure: Exec is still the lane behind the current main drag.');
     expect(checkupHtmlResponse.body).toContain('That first fix stays aligned with the same approvals-queue lane pressure.');
     expect(checkupHtmlResponse.body).toContain('All checkup items');
