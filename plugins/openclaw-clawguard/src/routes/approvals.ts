@@ -133,6 +133,19 @@ function describeImpactScope(entry: PendingAction): string {
   return entry.impact_scope ?? 'Impact scope was not captured beyond the tool call parameters shown below.';
 }
 
+function describeOutboundRoute(entry: PendingAction): string | undefined {
+  if (entry.tool_name !== 'message' && entry.tool_name !== 'sessions_send') {
+    return undefined;
+  }
+
+  const route = entry.params.to;
+  if (typeof route !== 'string' || route.trim().length === 0) {
+    return undefined;
+  }
+
+  return route;
+}
+
 function describeOperatorAction(entry: PendingAction, approvalTtlSeconds: number): string {
   if (entry.status === 'pending') {
     return `Approve once only if this exact ${entry.tool_name} action is expected, or deny it to keep the risky path blocked.`;
@@ -174,6 +187,7 @@ function renderStateGuide(): string {
 function renderPendingItem(entry: PendingAction, approvalTtlSeconds: number): string {
   const params = escapeHtml(JSON.stringify(entry.params, null, 2));
   const auditFlowLink = renderAuditFlowLink(entry.pending_action_id, AUDIT_REPLAY_ACTION.label);
+  const outboundRoute = describeOutboundRoute(entry);
   const actions =
     entry.status === 'pending'
       ? `
@@ -195,6 +209,7 @@ function renderPendingItem(entry: PendingAction, approvalTtlSeconds: number): st
       <p><strong>What action is this?</strong> ${escapeHtml(entry.tool_name)}${entry.action_title ? ` · Title: ${escapeHtml(entry.action_title)}` : ''}${entry.risk_level ? ` · Risk level: ${escapeHtml(humanizeValue(entry.risk_level))}` : ''}${entry.reason_code ? ` · Rule path: <code>${escapeHtml(entry.reason_code)}</code>` : ''}</p>
       <p><strong>Why it is risky:</strong> ${escapeHtml(entry.reason_summary)}</p>
       <p><strong>Guidance:</strong> ${escapeHtml(describeRisk(entry))}</p>
+      ${outboundRoute ? `<p><strong>Outbound route:</strong> ${escapeHtml(outboundRoute)}</p>` : ''}
       <p><strong>Impact scope:</strong> ${escapeHtml(describeImpactScope(entry))}</p>
       <p><strong>What the operator can do now:</strong> ${escapeHtml(describeOperatorAction(entry, approvalTtlSeconds))}</p>
       <p><strong>Where to look next:</strong> ${escapeHtml(describeWhereToLookNext(entry))}</p>

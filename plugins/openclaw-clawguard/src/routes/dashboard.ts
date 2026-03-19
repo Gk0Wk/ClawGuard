@@ -38,6 +38,12 @@ const CHECKUP_STATUS_ORDER = {
   needs_attention: 2,
   healthy: 1,
 } as const;
+const WORKSPACE_RESULT_STATE_PATTERN = /workspace result state=([^;]+?)(?:;|$)/i;
+const OUTBOUND_ROUTE_MODE_PATTERN = /Route mode=([^.;]+?)(?=\.|$)/i;
+
+function trimTrailingPunctuation(value: string): string {
+  return value.trim().replace(/[.;,]+$/u, '');
+}
 const RECENT_ERROR_KINDS: AuditEntry['kind'][] = [
   'failed',
   'invalid_transition',
@@ -106,6 +112,40 @@ function renderAuditItem(entry: AuditEntry): string {
     <br />
     <small>${escapeHtml(entry.timestamp)}${entry.tool_name ? ` · Tool: ${escapeHtml(entry.tool_name)}` : ''}</small>
   </li>`;
+}
+
+function extractAuditDetail(entries: AuditEntry[], pattern: RegExp): string | undefined {
+  for (const entry of entries) {
+    const match = entry.detail.match(pattern);
+    if (match?.[1]) {
+      return trimTrailingPunctuation(match[1]);
+    }
+  }
+
+  return undefined;
+}
+
+export function renderRecentAuditQuickScan(entries: AuditEntry[]): string {
+  const workspaceResultState = extractAuditDetail(entries, WORKSPACE_RESULT_STATE_PATTERN);
+  const outboundRouteMode = extractAuditDetail(entries, OUTBOUND_ROUTE_MODE_PATTERN);
+
+  const quickScanItems = [
+    workspaceResultState
+      ? `<li><strong>Workspace result state:</strong> ${escapeHtml(workspaceResultState)}</li>`
+      : undefined,
+    outboundRouteMode
+      ? `<li><strong>Outbound route mode:</strong> ${escapeHtml(outboundRouteMode)}</li>`
+      : undefined,
+  ].filter((item): item is string => typeof item === 'string');
+
+  return quickScanItems.length > 0
+    ? `<div>
+      <p><strong>Recent audit quick scan:</strong> the latest replay already has the shortest useful signal for workspace or outbound.</p>
+      <ul>
+        ${quickScanItems.join('\n')}
+      </ul>
+    </div>`
+    : '';
 }
 
 export function createDashboardPayload(state: ClawGuardState) {
@@ -451,6 +491,7 @@ function renderDashboardPage(state: ClawGuardState): string {
       <h3>Approvals queue</h3>
       ${renderControlSurfaceDomainBreakdown(payload.controlSurface.domainBreakdown.approvals)}
       <h3>Recent audit trail</h3>
+      ${renderRecentAuditQuickScan(payload.recentAudit.items)}
       <p><strong>Recent audit lane pressure:</strong> ${recentAuditLanePressure.leadLabel ? `${escapeHtml(recentAuditLanePressure.leadLabel)} is the heaviest lane in the recent audit trail (${recentAuditLanePressure.leadCount} live signal${recentAuditLanePressure.leadCount === 1 ? '' : 's'} among ${recentAuditLanePressure.namedTotal} named signal${recentAuditLanePressure.namedTotal === 1 ? '' : 's'}).` : 'No named lane is leading the recent audit trail right now.'}</p>
       <p><small>Split: ${escapeHtml(recentAuditLanePressure.mix)}</small></p>
       ${renderControlSurfaceDomainBreakdown(payload.controlSurface.domainBreakdown.recentAudit)}

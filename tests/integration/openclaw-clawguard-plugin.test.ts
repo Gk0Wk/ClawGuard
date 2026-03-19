@@ -1520,10 +1520,72 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(approvalsHtmlResponse.statusCode).toBe(200);
     expect(approvalsHtmlResponse.body).toContain('Approve outbound delivery (explicit route)');
     expect(approvalsHtmlResponse.body).toContain('What action is this?');
+    expect(approvalsHtmlResponse.body).toContain(
+      'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+    );
     expect(auditHtmlResponse.statusCode).toBe(200);
     expect(auditHtmlResponse.body).toContain('pending_action_created');
     expect(auditHtmlResponse.body).toContain('Route mode:</strong> explicit route');
     expect(auditHtmlResponse.body).toContain('Route mode=explicit.');
+  });
+
+  it('surfaces workspace result state and outbound route mode as a quick scan on dashboard and checkup', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const persistHandler = createToolResultPersistHandler(state);
+    const dashboardRoute = createDashboardRoute(state);
+    const checkupRoute = createCheckupRoute(state);
+    const workspaceEvent = createWorkspaceWriteEvent({
+      path: 'src\\generated\\feature-flags.ts',
+      content: 'export const featureFlag = true;\n',
+    });
+    const outboundEvent = createOutboundEvent({
+      to: 'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+      message: 'daily build finished successfully',
+    });
+
+    expect(beforeHandler(workspaceEvent.event, workspaceEvent.context)).toBeUndefined();
+    persistHandler(
+      {
+        ...workspaceEvent.event,
+        result: {
+          status: 'completed',
+          persisted: true,
+          created: ['src\\generated\\feature-flags.ts'],
+        },
+      },
+      workspaceEvent.context,
+    );
+
+    expect(beforeHandler(outboundEvent.event, outboundEvent.context)).toMatchObject({ block: true });
+
+    const dashboardHtmlResponse = createMockResponse();
+    dashboardRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/dashboard',
+      } as never,
+      dashboardHtmlResponse as never,
+    );
+
+    expect(dashboardHtmlResponse.statusCode).toBe(200);
+    expect(dashboardHtmlResponse.body).toContain('Recent audit quick scan:');
+    expect(dashboardHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
+    expect(dashboardHtmlResponse.body).toContain('Outbound route mode:</strong> explicit');
+
+    const checkupHtmlResponse = createMockResponse();
+    checkupRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/checkup',
+      } as never,
+      checkupHtmlResponse as never,
+    );
+
+    expect(checkupHtmlResponse.statusCode).toBe(200);
+    expect(checkupHtmlResponse.body).toContain('Recent audit quick scan:');
+    expect(checkupHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
+    expect(checkupHtmlResponse.body).toContain('Outbound route mode:</strong> explicit');
   });
 
   it('explains host-level direct outbound as an audit-only lane in the replay view', () => {

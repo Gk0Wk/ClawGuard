@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ClawGuardState } from '../services/state.js';
 import { escapeHtml } from '../utils.js';
-import { createDashboardPayload, summarizeCheckupStatus } from './dashboard.js';
+import { createDashboardPayload, renderRecentAuditQuickScan, summarizeCheckupStatus } from './dashboard.js';
 import {
   CHECKUP_ROUTE_PATH,
   DASHBOARD_ROUTE_PATH,
@@ -116,6 +116,7 @@ function renderCheckupPage(state: ClawGuardState): string {
       <h3>Approvals queue</h3>
       ${renderControlSurfaceDomainBreakdown(payload.controlSurface.domainBreakdown.approvals)}
       <h3>Recent audit trail</h3>
+      ${renderRecentAuditQuickScan(payload.recentAudit.items)}
       <p><strong>Recent audit lane pressure:</strong> ${recentAuditLanePressure.leadLabel ? `${escapeHtml(recentAuditLanePressure.leadLabel)} is the heaviest lane in the recent audit trail (${recentAuditLanePressure.leadCount} live signal${recentAuditLanePressure.leadCount === 1 ? '' : 's'} among ${recentAuditLanePressure.namedTotal} named signal${recentAuditLanePressure.namedTotal === 1 ? '' : 's'}).` : 'No named lane is leading the recent audit trail right now.'}</p>
       <p><small>Split: ${escapeHtml(recentAuditLanePressure.mix)}</small></p>
       ${renderControlSurfaceDomainBreakdown(payload.controlSurface.domainBreakdown.recentAudit)}
