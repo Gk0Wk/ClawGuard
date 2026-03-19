@@ -15,6 +15,7 @@ export interface PendingAction {
   readonly run_id: string;
   readonly tool_call_id?: string;
   readonly tool_name: string;
+  readonly action_title?: string;
   readonly params: Record<string, unknown>;
   readonly action_fingerprint: string;
   readonly decision?: 'approve_required' | 'block';

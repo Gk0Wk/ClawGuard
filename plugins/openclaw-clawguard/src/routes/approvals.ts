@@ -87,6 +87,10 @@ function humanizeValue(value: string): string {
 }
 
 function summarizeTool(entry: PendingAction): string {
+  if (entry.action_title) {
+    return entry.action_title;
+  }
+
   switch (entry.tool_name) {
     case 'exec':
       return 'Shell or command execution';
@@ -192,7 +196,7 @@ function renderPendingItem(entry: PendingAction, approvalTtlSeconds: number): st
     <article id="approval-${escapeHtml(entry.pending_action_id)}">
       <h2>${escapeHtml(summarizeTool(entry))}</h2>
       <p><strong>${escapeHtml(summarizeStatus(entry.status))}</strong> · Pending ID: <code>${escapeHtml(entry.pending_action_id)}</code></p>
-      <p><strong>What action is this?</strong> ${escapeHtml(entry.tool_name)}${entry.risk_level ? ` · Risk level: ${escapeHtml(humanizeValue(entry.risk_level))}` : ''}${entry.reason_code ? ` · Rule path: <code>${escapeHtml(entry.reason_code)}</code>` : ''}</p>
+      <p><strong>What action is this?</strong> ${escapeHtml(entry.tool_name)}${entry.action_title ? ` · Title: ${escapeHtml(entry.action_title)}` : ''}${entry.risk_level ? ` · Risk level: ${escapeHtml(humanizeValue(entry.risk_level))}` : ''}${entry.reason_code ? ` · Rule path: <code>${escapeHtml(entry.reason_code)}</code>` : ''}</p>
       <p><strong>Why it is risky:</strong> ${escapeHtml(entry.reason_summary)}</p>
       <p><strong>Guidance:</strong> ${escapeHtml(describeRisk(entry))}</p>
       <p><strong>Impact scope:</strong> ${escapeHtml(describeImpactScope(entry))}</p>

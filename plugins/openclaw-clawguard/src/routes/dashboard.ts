@@ -13,6 +13,7 @@ import {
   renderClawGuardNav,
   renderControlSurfaceIntro,
   renderInstallDemoPostureNote,
+  renderLifecycleHandoffCopy,
   renderOperatorActionLink,
   INSTALL_DEMO,
 } from './shared.js';
@@ -431,7 +432,7 @@ function renderDashboardPage(state: ClawGuardState): string {
     <section>
       <h2>Checkup details</h2>
       <p>These posture items are read-only summaries built from the current approvals queue, recent audit trail, and install-demo metadata.</p>
-      <p>Need the deeper Alpha explanation? Open the plugin-owned <a href="${CHECKUP_ROUTE_PATH}">full safety checkup</a> for the same read-only posture source with per-item evidence and follow-up actions, then jump to <a href="${APPROVALS_ROUTE_PATH}">Approvals</a> for action or <a href="${AUDIT_ROUTE_PATH}">Audit</a> for replay.</p>
+      <p>${renderLifecycleHandoffCopy('dashboard')}</p>
       <ul>
         ${checkupItems}
       </ul>

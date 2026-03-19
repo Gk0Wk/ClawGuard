@@ -20,6 +20,7 @@ export interface CreatePendingActionInput {
   readonly run_id: string;
   readonly tool_call_id?: string;
   readonly tool_name: string;
+  readonly action_title?: PendingAction['action_title'];
   readonly params: Record<string, unknown>;
   readonly action_fingerprint: string;
   readonly decision?: PendingAction['decision'];
@@ -141,6 +142,7 @@ export class StateRepository {
       run_id: input.run_id,
       tool_call_id: input.tool_call_id,
       tool_name: input.tool_name,
+      action_title: input.action_title,
       params: structuredClone(input.params),
       action_fingerprint: input.action_fingerprint,
       decision: input.decision,

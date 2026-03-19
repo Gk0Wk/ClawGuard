@@ -203,6 +203,7 @@ export class ClawGuardState {
       run_id: runId,
       tool_call_id: toolCallId,
       tool_name: toolName,
+      action_title: artifacts.approval_request?.action_title,
       params: input.params,
       action_fingerprint: actionFingerprint,
       decision: 'approve_required',
@@ -343,10 +344,11 @@ export class ClawGuardState {
 
     this.trackedExecutions.delete(correlationKey);
 
+    const resultSummary = buildAfterSummary(input);
     const integrated = applyPostExecutionResultToEvaluationArtifacts(tracked.artifacts, {
       tool_status: deriveAfterToolStatus(input),
       timestamp: toIsoString(this.clock.now()),
-      summary: buildAfterSummary(input),
+      summary: resultSummary,
     });
     const finalKind = mapFinalStatusToAuditKind(integrated.audit_record.final_status);
     if (!finalKind) {
@@ -355,7 +357,7 @@ export class ClawGuardState {
 
     this.audit.record({
       kind: finalKind,
-      detail: buildFinalOutcomeDetail(integrated),
+      detail: buildFinalOutcomeDetail(integrated, resultSummary),
       session_key: integrated.session_ref.session_key,
       run_id: integrated.run_ref.run_id,
       tool_call_id: integrated.tool_call_ref.tool_call_id,
@@ -629,6 +631,11 @@ function deriveAfterToolStatus(input: ToolResultSnapshot): ToolStatus {
 }
 
 function buildAfterSummary(input: ToolResultSnapshot): string {
+  const structuredResultSummary = summarizeStructuredToolResult(input.result);
+  if (structuredResultSummary) {
+    return structuredResultSummary;
+  }
+
   if (typeof input.error === 'string' && input.error.trim().length > 0) {
     return input.error.trim();
   }
@@ -642,6 +649,51 @@ function buildAfterSummary(input: ToolResultSnapshot): string {
   }
 
   return 'tool completed';
+}
+
+export function summarizeStructuredToolResult(result: unknown): string | undefined {
+  if (!result || typeof result !== 'object') {
+    return undefined;
+  }
+
+  const record = result as Record<string, unknown>;
+  const summary =
+    readOptionalString(record.summary) ??
+    readOptionalString(record.message) ??
+    readOptionalString(record.result);
+  const operationType =
+    readOptionalString(record.operationType) ??
+    readOptionalString(record.operation_type);
+  const status = readOptionalString(record.status);
+  const paths = [
+    readOptionalString(record.path),
+    readOptionalString(record.filePath),
+    readOptionalString(record.patchPath),
+    ...readOptionalStringArray(record.paths),
+  ].filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index);
+
+  if (summary) {
+    const summarySegments = [
+      summary,
+      operationType ? `operation type=${operationType}` : undefined,
+      status ? `tool result status=${status}` : undefined,
+      paths.length > 0 ? `paths=${paths.join(', ')}` : undefined,
+    ].filter((value): value is string => Boolean(value));
+
+    return summarySegments.join('; ').trim();
+  }
+
+  if (!operationType && !status && paths.length === 0) {
+    return undefined;
+  }
+
+  const segments = [
+    operationType ? `operation type=${operationType}` : undefined,
+    status ? `tool result status=${status}` : undefined,
+    paths.length > 0 ? `paths=${paths.join(', ')}` : undefined,
+  ].filter((value): value is string => Boolean(value));
+
+  return segments.length > 0 ? segments.join('; ') : undefined;
 }
 
 function isBlockedResult(result: unknown): boolean {
@@ -676,14 +728,35 @@ function mapFinalStatusToAuditKind(
 
 function buildFinalOutcomeDetail(
   artifacts: ReturnType<typeof applyPostExecutionResultToEvaluationArtifacts>,
+  resultSummary?: string,
 ): string {
-  return `Final outcome ${artifacts.audit_record.final_status} after execution. ${artifacts.policy_decision.reason} ${artifacts.risk_event.summary}`.trim();
+  const resolvedResultSummary = resultSummary ?? artifacts.evaluation_input.agent_event?.summary;
+  const routeMode = artifacts.evaluation_input.destination?.target_mode;
+
+  return [
+    `Final outcome ${artifacts.audit_record.final_status} after execution.`,
+    routeMode ? `Route mode=${routeMode}.` : undefined,
+    artifacts.policy_decision.reason,
+    artifacts.risk_event.summary,
+    resolvedResultSummary ? `Result detail: ${resolvedResultSummary}` : undefined,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+    .trim();
 }
 
 function buildHostOutboundFinalOutcomeDetail(
   artifacts: ReturnType<typeof applyPostExecutionResultToEvaluationArtifacts>,
 ): string {
-  return `Final outbound outcome ${artifacts.audit_record.final_status} after host delivery. ${artifacts.policy_decision.reason} ${artifacts.risk_event.summary}`.trim();
+  return [
+    `Final outbound outcome ${artifacts.audit_record.final_status} after host delivery.`,
+    artifacts.policy_decision.reason,
+    artifacts.risk_event.summary,
+    artifacts.evaluation_input.agent_event?.summary ? `Result detail: ${artifacts.evaluation_input.agent_event.summary}` : undefined,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+    .trim();
 }
 
 function buildHostOutboundEvaluationArtifacts(
@@ -792,6 +865,25 @@ function readCommand(toolParams: Record<string, unknown>): string | undefined {
 function normalizeSessionKeySegment(value: string): string {
   const normalized = value.trim().toLowerCase();
   return normalized.replace(/[^a-z0-9._-]+/g, '_');
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function readOptionalStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => readOptionalString(entry))
+    .filter((entry): entry is string => Boolean(entry));
 }
 
 function normalizeToolName(toolName: string): string {

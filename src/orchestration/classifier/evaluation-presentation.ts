@@ -11,14 +11,16 @@ export function buildSummary(
 ): string {
   const workspaceOperation = buildWorkspaceOperationPresentation(evaluationInput);
   const destinationPresentation = buildDestinationPresentation(evaluationInput);
+  const routeMode = buildRouteModePresentation(evaluationInput);
 
   if (primaryMatch) {
-    return `${primaryMatch.summary}${workspaceOperation ? ` Operation type: ${workspaceOperation}.` : ''} ${evaluationInput.tool_name} call evaluated as ${policyDecision.decision}.`;
+    return `${primaryMatch.summary}${workspaceOperation ? ` Operation type: ${workspaceOperation}.` : ''}${routeMode ? ` Route mode=${routeMode}.` : ''} ${evaluationInput.tool_name} call evaluated as ${policyDecision.decision}.`;
   }
 
   const destination = destinationPresentation ? ` to ${destinationPresentation}` : '';
   const operation = workspaceOperation ? ` with ${workspaceOperation} semantics` : '';
-  return `${evaluationInput.tool_name} call${destination}${operation} evaluated as ${policyDecision.decision}.`;
+  const route = routeMode ? ` (${routeMode} route)` : '';
+  return `${evaluationInput.tool_name} call${destination}${route}${operation} evaluated as ${policyDecision.decision}.`;
 }
 
 export function buildExplanation(
@@ -33,6 +35,8 @@ export function buildExplanation(
   const workspaceOperationExplanation = workspaceOperation
     ? ` Workspace operation type=${workspaceOperation}.`
     : '';
+  const routeMode = buildRouteModePresentation(evaluationInput);
+  const routeModeExplanation = routeMode ? ` Route mode=${routeMode}.` : '';
 
   if (primaryMatch) {
     const additionalRuleIds = ruleMatches
@@ -41,20 +45,23 @@ export function buildExplanation(
     const additionalMatches =
       additionalRuleIds.length > 0 ? ` Additional fast-path matches: ${additionalRuleIds.join(', ')}.` : '';
 
-    return `${policyDecision.reason} Scope=${primaryMatch.match_scope}.${additionalMatches}${destination}${workspaceOperationExplanation}${origin}`;
+    return `${policyDecision.reason} Scope=${primaryMatch.match_scope}.${additionalMatches}${destination}${routeModeExplanation}${workspaceOperationExplanation}${origin}`;
   }
 
-  return `${policyDecision.reason}${destination}${workspaceOperationExplanation}${origin}`;
+  return `${policyDecision.reason}${destination}${routeModeExplanation}${workspaceOperationExplanation}${origin}`;
 }
 
 export function buildApprovalActionTitle(evaluationInput: EvaluationInput): string {
+  const routeMode = buildRouteModePresentation(evaluationInput);
   switch (evaluationInput.tool_name) {
     case 'exec':
       return 'Approve command execution';
     case 'message':
     case 'message_sending':
     case 'sessions_send':
-      return 'Approve outbound delivery';
+      return routeMode
+        ? `Approve outbound delivery (${routeMode} route)`
+        : 'Approve outbound delivery';
     case 'write':
     case 'edit':
     case 'apply_patch':
@@ -110,15 +117,20 @@ function buildDestinationPresentation(evaluationInput: EvaluationInput): string 
 
 function buildDestinationExplanation(evaluationInput: EvaluationInput): string {
   const destinationPresentation = buildDestinationPresentation(evaluationInput);
-  const targetMode = evaluationInput.destination?.target_mode;
-  if (!destinationPresentation && !targetMode) {
+  const routeMode = buildRouteModePresentation(evaluationInput);
+  if (!destinationPresentation && !routeMode) {
     return '';
   }
 
   return [
     destinationPresentation ? ` Outbound route=${destinationPresentation}.` : '',
-    targetMode ? ` Target mode=${targetMode}.` : '',
+    routeMode ? ` Route mode=${routeMode}.` : '',
   ].join('');
+}
+
+function buildRouteModePresentation(evaluationInput: EvaluationInput): 'explicit' | 'implicit' | undefined {
+  const routeMode = evaluationInput.destination?.target_mode;
+  return routeMode === 'explicit' || routeMode === 'implicit' ? routeMode : undefined;
 }
 
 function buildWorkspaceOperationPresentation(

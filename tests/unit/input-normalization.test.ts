@@ -165,6 +165,30 @@ describe('Sprint 0 input normalization', () => {
     });
   });
 
+  it('surfaces edit path-reference moves as rename-like when the filename stays the same across directories', () => {
+    const normalized = normalizeOpenClawInputs({
+      before_tool_call: {
+        event: {
+          toolName: 'edit',
+          params: {
+            path: '.env',
+            oldText: 'src\\templates\\approval-policy.ts',
+            newText: 'src\\guards\\approval-policy.ts',
+          },
+        },
+      },
+      session_policy: {
+        sessionKey: 'session-edit-path-reference-rename',
+      },
+    });
+
+    expect(normalized.evaluation_input.workspace_context).toEqual({
+      paths: ['.env'],
+      summary: 'src\\guards\\approval-policy.ts',
+      operation_type: 'rename-like',
+    });
+  });
+
   it('normalizes edit mutations into workspace context and text candidates', () => {
     const normalized = normalizeOpenClawInputs(workspaceEditMutationFixture.args);
 
@@ -319,6 +343,54 @@ describe('Sprint 0 input normalization', () => {
       summary:
         '*** Begin Patch\n*** Update File: .env\n@@\n ENVIRONMENT=production\n-FEATURE_FLAG=false\n*** End Patch',
       operation_type: 'delete',
+    });
+  });
+
+  it('classifies update-file patches without explicit hunks as insert when they only add content', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patch:
+          '*** Begin Patch\n*** Update File: .env\n+FEATURE_FLAG=true\n*** End Patch\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context).toEqual({
+      paths: ['.env'],
+      summary:
+        '*** Begin Patch\n*** Update File: .env\n+FEATURE_FLAG=true\n*** End Patch',
+      operation_type: 'insert',
+    });
+  });
+
+  it('classifies update-file patches without explicit hunks as delete when they only remove content', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patch:
+          '*** Begin Patch\n*** Update File: .env\n-FEATURE_FLAG=false\n*** End Patch\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context).toEqual({
+      paths: ['.env'],
+      summary:
+        '*** Begin Patch\n*** Update File: .env\n-FEATURE_FLAG=false\n*** End Patch',
+      operation_type: 'delete',
+    });
+  });
+
+  it('keeps update-file patches with context lines on modify when no hunk structure is present', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patch:
+          '*** Begin Patch\n*** Update File: .env\nENVIRONMENT=production\n+FEATURE_FLAG=true\n*** End Patch\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context).toEqual({
+      paths: ['.env'],
+      summary:
+        '*** Begin Patch\n*** Update File: .env\nENVIRONMENT=production\n+FEATURE_FLAG=true\n*** End Patch',
+      operation_type: 'modify',
     });
   });
 

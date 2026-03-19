@@ -9,6 +9,7 @@ import {
   renderClawGuardNav,
   renderControlSurfaceIntro,
   renderInstallDemoPostureNote,
+  renderLifecycleHandoffCopy,
   renderOperatorActionLink,
 } from './shared.js';
 
@@ -98,7 +99,7 @@ function renderCheckupPage(state: ClawGuardState): string {
     </section>
     <section>
       <h2>All checkup items</h2>
-      <p>This page reuses the same UI-facing posture/checkup aggregation as the dashboard and expands it with item-level evidence. When an item needs a decision, continue to Approvals; when it needs a trail, continue to Audit.</p>
+      <p>This page reuses the same UI-facing posture/checkup aggregation as the dashboard and expands it with item-level evidence. ${renderLifecycleHandoffCopy('checkup')}</p>
       ${checkupItems}
     </section>
     <section>

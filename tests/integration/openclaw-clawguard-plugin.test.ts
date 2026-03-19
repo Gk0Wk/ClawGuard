@@ -665,6 +665,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(pending.reason_summary).toBe(artifacts.approval_request?.reason_summary);
     expect(pending.reason_code).toBe(artifacts.policy_decision.reason_code);
     expect(pending.risk_level).toBe(artifacts.risk_event.severity);
+    expect(pending.action_title).toBe(artifacts.approval_request?.action_title);
     expect(pending.impact_scope).toBe(artifacts.approval_request?.impact_scope);
     expect(pending.guidance_summary).toBe(artifacts.risk_event.summary);
     expect(result?.blockReason).toContain(`Reason: ${artifacts.approval_request?.reason_summary}`);
@@ -850,7 +851,8 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(pending.risk_level).toBe(artifacts.risk_event.severity);
     expect(pending.impact_scope).toBe(artifacts.approval_request?.impact_scope);
     expect(pending.guidance_summary).toBe(artifacts.risk_event.summary);
-    expect(pending.guidance_summary).toContain('modify');
+    expect(pending.action_title).toBe('Approve workspace mutation (insert)');
+    expect(pending.guidance_summary).toContain('insert');
     expect(result?.blockReason).toContain(`Reason: ${artifacts.approval_request?.reason_summary}`);
     expect(result?.blockReason).toContain(`Guidance: ${artifacts.risk_event.summary}`);
     expect(result?.blockReason).toContain(`Impact scope: ${artifacts.approval_request?.impact_scope}`);
@@ -889,10 +891,12 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(result).toMatchObject({ block: true });
     expect(pending.tool_name).toBe('apply_patch');
+    expect(pending.action_title).toBe('Approve workspace mutation (rename-like)');
     expect(pending.impact_scope).toBe('src\\templates\\ci-template.yml, .github\\workflows\\ci.yml');
     expect(pending.guidance_summary).toContain('rename-like');
     expect(result?.blockReason).toContain('rename-like');
     expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.body).toContain('Approve workspace mutation (rename-like)');
     expect(htmlResponse.body).toContain('rename-like');
     expect(result?.blockReason).toContain('Impact scope: src\\templates\\ci-template.yml, .github\\workflows\\ci.yml');
   });
@@ -962,10 +966,12 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(result).toMatchObject({ block: true });
     expect(pending.tool_name).toBe('edit');
+    expect(pending.action_title).toBe('Approve workspace mutation (rename-like)');
     expect(pending.guidance_summary).toContain('rename-like');
     expect(result?.blockReason).toContain('Guidance:');
     expect(result?.blockReason).toContain('rename-like');
     expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.body).toContain('Approve workspace mutation (rename-like)');
     expect(htmlResponse.body).toContain('Guidance:</strong>');
     expect(htmlResponse.body).toContain('rename-like');
     expect(htmlResponse.body).toContain('Impact scope:</strong> .env');
@@ -997,10 +1003,12 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(result).toMatchObject({ block: true });
     expect(pending.tool_name).toBe('write');
+    expect(pending.action_title).toBe('Approve workspace mutation (rename-like)');
     expect(pending.impact_scope).toBe('src\\templates\\ci-template.yml, .github\\workflows\\ci-template.yml');
     expect(pending.guidance_summary).toContain('rename-like');
     expect(result?.blockReason).toContain('rename-like');
     expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.body).toContain('Approve workspace mutation (rename-like)');
     expect(htmlResponse.body).toContain('rename-like');
     expect(htmlResponse.body).toContain(
       'Impact scope:</strong> src\\templates\\ci-template.yml, .github\\workflows\\ci-template.yml',
@@ -1032,12 +1040,14 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(result).toMatchObject({ block: true });
     expect(pending.tool_name).toBe('edit');
+    expect(pending.action_title).toBe('Approve workspace mutation (modify)');
     expect(pending.guidance_summary).toContain('modify');
     expect(pending.guidance_summary).not.toContain('rename-like');
     expect(result?.blockReason).toContain('Guidance:');
     expect(result?.blockReason).toContain('modify');
     expect(result?.blockReason).not.toContain('rename-like');
     expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.body).toContain('Approve workspace mutation (modify)');
     expect(htmlResponse.body).toContain('Guidance:</strong>');
     expect(htmlResponse.body).toContain('modify');
     expect(htmlResponse.body).not.toContain('rename-like');
@@ -1173,6 +1183,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         result: {
           status: 'completed',
           persisted: true,
+          paths: ['src\\generated\\feature-flags.ts'],
         },
       },
       context,
@@ -1184,6 +1195,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       tool_name: 'write',
     });
     expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain('Final outcome allowed after execution.');
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
+      'Result detail: tool result status=completed; paths=src\\generated\\feature-flags.ts',
+    );
   });
 
   it('keeps exec finalization on after_tool_call even when tool_result_persist fires', () => {
@@ -1265,6 +1279,89 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain(
       'Direct host outbound cannot enter the pending approval loop',
     );
+  });
+
+  it('surfaces explicit outbound route mode through approvals and audit for queued message deliveries', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const approvalsRoute = createApprovalsRoute(state);
+    const auditRoute = createAuditRoute(state);
+    const { event, context } = createOutboundEvent({
+      to: 'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+      message: 'daily build finished successfully',
+    });
+
+    const result = beforeHandler(event, context);
+    const pending = state.pendingActions.list()[0];
+    const approvalsHtmlResponse = createMockResponse();
+    const auditHtmlResponse = createMockResponse();
+
+    approvalsRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/approvals',
+      } as never,
+      approvalsHtmlResponse as never,
+    );
+    auditRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/audit',
+      } as never,
+      auditHtmlResponse as never,
+    );
+
+    expect(result).toMatchObject({ block: true });
+    expect(pending.action_title).toBe('Approve outbound delivery (explicit route)');
+    expect(result?.blockReason).toContain('Route mode=explicit.');
+    expect(approvalsHtmlResponse.statusCode).toBe(200);
+    expect(approvalsHtmlResponse.body).toContain('Approve outbound delivery (explicit route)');
+    expect(approvalsHtmlResponse.body).toContain('What action is this?');
+    expect(auditHtmlResponse.statusCode).toBe(200);
+    expect(auditHtmlResponse.body).toContain('pending_action_created');
+    expect(auditHtmlResponse.body).toContain('Route mode:</strong> explicit route');
+    expect(auditHtmlResponse.body).toContain('Route mode=explicit.');
+  });
+
+  it('closes an approval-gated outbound flow through after_tool_call with route-aware audit detail', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const afterHandler = createAfterToolCallHandler(state);
+    const { event, context } = createOutboundEvent({
+      toolName: 'sessions_send',
+      to: 'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+      message: 'daily build finished successfully',
+    });
+
+    const result = beforeHandler(event, context);
+    const pending = state.pendingActions.list()[0];
+
+    expect(result).toMatchObject({ block: true });
+    expect(pending.action_title).toBe('Approve outbound delivery (explicit route)');
+
+    state.approvePendingAction(pending.pending_action_id);
+
+    expect(beforeHandler(event, context)).toBeUndefined();
+
+    afterHandler(
+      {
+        ...event,
+        result: {
+          status: 'completed',
+          summary: 'delivery completed',
+        },
+      } as never,
+      context,
+    );
+
+    const allowed = getLatestAuditByKind(state, 'allowed');
+    expect(allowed).toMatchObject({
+      tool_name: 'sessions_send',
+      pending_action_id: pending.pending_action_id,
+    });
+    expect(allowed?.detail).toContain('Final outcome allowed after execution.');
+    expect(allowed?.detail).toContain('Route mode=explicit.');
+    expect(allowed?.detail).toContain('Result detail: delivery completed');
   });
 
   it('does not allow a retry when the fingerprint changes', () => {
@@ -1748,7 +1845,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
     expect(dashboardHtmlResponse.body).toContain('Dashboard = status');
     expect(dashboardHtmlResponse.body).toContain(
-      'Then use Checkup for explanation, Approvals for action, and Audit for replay.',
+      'Need the deeper Alpha explanation? Open the plugin-owned <a href="/plugins/clawguard/checkup">full safety checkup</a> for the same read-only posture source with per-item evidence and follow-up actions, then use <a href="/plugins/clawguard/approvals">Approvals</a> for any live item that still needs a decision or retry, and use <a href="/plugins/clawguard/audit">Audit</a> for the final closure after the item leaves the queue.',
     );
     expect(dashboardHtmlResponse.body).toContain(
       'These pages reorganize the same bounded approval, posture, and audit signals only.',
@@ -2158,7 +2255,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
     expect(checkupHtmlResponse.body).toContain('Checkup = explanation');
     expect(checkupHtmlResponse.body).toContain(
-      'There is no stock Control UI Security tab for this alpha, and ClawGuard does not depend on a patched nav hack.',
+        'There is no stock Control UI Security tab for this alpha, and ClawGuard does not depend on a patched nav hack.',
     );
     expect(checkupHtmlResponse.body).toContain('/plugins/clawguard/dashboard');
     expect(checkupHtmlResponse.body).toContain('Top status summary');
@@ -2166,6 +2263,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(checkupHtmlResponse.body).toContain('All checkup items');
     expect(checkupHtmlResponse.body).toContain('Evidence available right now');
     expect(checkupHtmlResponse.body).toContain('Quick follow-up actions');
+    expect(checkupHtmlResponse.body).toContain(
+      'When an item is still live, continue to Approvals to act on it; when it has already closed, continue to Audit for the final replay trail.',
+    );
     expect(checkupHtmlResponse.body).toContain(`<strong>${dashboardPayload.safetyStatus.label}</strong>`);
     expect(checkupHtmlResponse.body).toContain(dashboardPayload.safetyStatus.summary);
     expect(checkupHtmlResponse.body).toContain(

@@ -50,6 +50,8 @@ type ControlSurfacePage = {
   readonly intro: string;
 };
 
+export type ControlSurfaceHandoffMode = 'dashboard' | 'checkup';
+
 export const INSTALL_DEMO = {
   title: 'ClawGuard for OpenClaw install demo',
   releaseStatus: 'Install demo only. Not a formal release.',
@@ -198,6 +200,15 @@ export function renderClawGuardNav(currentPath: string): string {
 
 export function renderInstallDemoPostureNote(): string {
   return `<p><strong>${INSTALL_DEMO.demoPosture}</strong> ${INSTALL_DEMO.navigationPosture}</p>`;
+}
+
+export function renderLifecycleHandoffCopy(mode: ControlSurfaceHandoffMode): string {
+  switch (mode) {
+    case 'dashboard':
+      return `Need the deeper Alpha explanation? Open the plugin-owned <a href="${CHECKUP_ROUTE_PATH}">full safety checkup</a> for the same read-only posture source with per-item evidence and follow-up actions, then use <a href="${APPROVALS_ROUTE_PATH}">Approvals</a> for any live item that still needs a decision or retry, and use <a href="${AUDIT_ROUTE_PATH}">Audit</a> for the final closure after the item leaves the queue.`;
+    case 'checkup':
+      return 'When an item is still live, continue to Approvals to act on it; when it has already closed, continue to Audit for the final replay trail.';
+  }
 }
 
 export function getOperatorAction(id: OperatorActionId): OperatorActionLink {

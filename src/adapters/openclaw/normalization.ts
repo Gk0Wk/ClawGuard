@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import {
   detectWorkspaceMutationOperationType,
   type EvaluationDestination,
@@ -262,14 +264,18 @@ function resolveWorkspaceMutationOperationType(
   patchText: string | undefined,
 ): WorkspaceMutationOperationType | undefined {
   const baseOperationType = detectWorkspaceMutationOperationType(normalizedToolName, toolParams);
+  if (normalizedToolName === 'edit' && baseOperationType === WorkspaceMutationOperationType.Modify) {
+    return detectEditPathReferenceRenameLikeOperationType(toolParams) ?? baseOperationType;
+  }
+
   if (normalizedToolName !== 'apply_patch' || baseOperationType !== 'modify' || !patchText) {
     return baseOperationType;
   }
 
-  return detectApplyPatchHunkOperationType(patchText) ?? baseOperationType;
+  return detectApplyPatchSectionOperationType(patchText) ?? baseOperationType;
 }
 
-function detectApplyPatchHunkOperationType(
+function detectApplyPatchSectionOperationType(
   patchText: string,
 ): WorkspaceMutationOperationType | undefined {
   const fileKinds: WorkspaceMutationOperationType[] = [];
@@ -277,12 +283,14 @@ function detectApplyPatchHunkOperationType(
   let currentFileSawHunk = false;
   let currentFileSawPlus = false;
   let currentFileSawMinus = false;
+  let currentFileSawNeutralContent = false;
 
   const resetCurrentFile = (): void => {
     currentFileStarted = false;
     currentFileSawHunk = false;
     currentFileSawPlus = false;
     currentFileSawMinus = false;
+    currentFileSawNeutralContent = false;
   };
 
   const flushCurrentFile = (): void => {
@@ -290,13 +298,13 @@ function detectApplyPatchHunkOperationType(
       return;
     }
 
-    if (!currentFileSawHunk) {
+    if (currentFileSawPlus && currentFileSawMinus) {
       fileKinds.push(WorkspaceMutationOperationType.Modify);
       resetCurrentFile();
       return;
     }
 
-    if (currentFileSawPlus && currentFileSawMinus) {
+    if (currentFileSawNeutralContent) {
       fileKinds.push(WorkspaceMutationOperationType.Modify);
       resetCurrentFile();
       return;
@@ -320,6 +328,7 @@ function detectApplyPatchHunkOperationType(
 
   for (const rawLine of patchText.split(/\r?\n/u)) {
     const line = rawLine.trimEnd();
+    const trimmedLine = line.trim();
 
     if (/^\*\*\* Update File:\s+.+$/u.test(line) || /^diff --git\s+/u.test(line)) {
       flushCurrentFile();
@@ -331,18 +340,44 @@ function detectApplyPatchHunkOperationType(
       continue;
     }
 
+    if (
+      /^\*\*\* Begin Patch$/u.test(trimmedLine) ||
+      /^\*\*\* End Patch$/u.test(trimmedLine) ||
+      /^\*\*\* (?:Add|Delete|Move to):\s+.+$/u.test(trimmedLine) ||
+      /^index\s+.+$/u.test(trimmedLine) ||
+      /^new file mode(?:\s+\d+)?$/u.test(trimmedLine) ||
+      /^deleted file mode(?:\s+\d+)?$/u.test(trimmedLine) ||
+      /^similarity index\s+\d+%$/u.test(trimmedLine) ||
+      /^old mode\s+\d+$/u.test(trimmedLine) ||
+      /^new mode\s+\d+$/u.test(trimmedLine) ||
+      /^(?:rename|copy) (?:from|to)\s+.+$/u.test(trimmedLine) ||
+      /^diff --git\s+/u.test(trimmedLine) ||
+      /^(?:---|\+\+\+)\s+.+$/u.test(trimmedLine)
+    ) {
+      continue;
+    }
+
     if (/^@@(?:\s|$)/u.test(line)) {
       currentFileSawHunk = true;
       continue;
     }
 
-    if (currentFileSawHunk && /^\+(?!\+\+)/u.test(line)) {
+    if (/^\+(?!\+\+)/u.test(line)) {
       currentFileSawPlus = true;
       continue;
     }
 
-    if (currentFileSawHunk && /^-(?!---)/u.test(line)) {
+    if (/^-(?!---)/u.test(line)) {
       currentFileSawMinus = true;
+      continue;
+    }
+
+    if (trimmedLine.length === 0) {
+      continue;
+    }
+
+    if (!currentFileSawHunk) {
+      currentFileSawNeutralContent = true;
     }
   }
 
@@ -361,6 +396,58 @@ function detectApplyPatchHunkOperationType(
   return singleKind === WorkspaceMutationOperationType.Insert || singleKind === WorkspaceMutationOperationType.Delete
     ? singleKind
     : undefined;
+}
+
+function detectEditPathReferenceRenameLikeOperationType(
+  toolParams: Record<string, unknown>,
+): WorkspaceMutationOperationType | undefined {
+  const oldText = normalizeEditPathReference(toolParams.oldText ?? toolParams.old_string ?? toolParams.oldValue ?? toolParams.old_value);
+  const newText = normalizeEditPathReference(toolParams.newText ?? toolParams.new_string ?? toolParams.newValue ?? toolParams.new_value);
+
+  if (!oldText || !newText) {
+    return undefined;
+  }
+
+  return isPathReferenceRenameLikeReplacement(oldText, newText)
+    ? WorkspaceMutationOperationType.RenameLike
+    : undefined;
+}
+
+function normalizeEditPathReference(value: unknown): string | undefined {
+  const normalized = normalizeOptionalString(value);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const unquoted =
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+      ? normalized.slice(1, -1).trim()
+      : normalized;
+
+  if (!/[\\/]/u.test(unquoted)) {
+    return undefined;
+  }
+
+  return unquoted.replace(/\//gu, '\\');
+}
+
+function isPathReferenceRenameLikeReplacement(oldText: string, newText: string): boolean {
+  const oldParsedPath = path.win32.parse(oldText);
+  const newParsedPath = path.win32.parse(newText);
+
+  if (!oldParsedPath.base || !newParsedPath.base) {
+    return false;
+  }
+
+  if (oldParsedPath.base.toLowerCase() !== newParsedPath.base.toLowerCase()) {
+    return false;
+  }
+
+  const oldDirectory = oldParsedPath.dir.trim().toLowerCase();
+  const newDirectory = newParsedPath.dir.trim().toLowerCase();
+
+  return oldDirectory !== newDirectory;
 }
 
 function normalizeAgentEvent(

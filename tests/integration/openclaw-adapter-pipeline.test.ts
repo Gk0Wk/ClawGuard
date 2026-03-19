@@ -179,13 +179,16 @@ describe('OpenClaw adapter pipeline', () => {
     expect(result.rule_matches.map((match) => match.rule_id)).toContain('destination.public-webhook-url');
     expect(result.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
     expect(result.approval_request).toMatchObject({
+      action_title: 'Approve outbound delivery (explicit route)',
       impact_scope:
         'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token via slack/default/C123 (thread 1111.2222)',
     });
     expect(result.risk_event.summary).toContain('Detected a public webhook destination.');
+    expect(result.risk_event.summary).toContain('Route mode=explicit.');
     expect(result.risk_event.explanation).toContain(
       'Outbound route=https://hooks.slack.com/services/T00000000/B00000000/very-secret-token via slack/default/C123 (thread 1111.2222).',
     );
+    expect(result.risk_event.explanation).toContain('Route mode=explicit.');
   });
 
   it('routes apply_patch through the workspace mutation pipeline', () => {
@@ -226,7 +229,7 @@ describe('OpenClaw adapter pipeline', () => {
       paths: ['src\\generated\\feature-flags.ts'],
       summary:
         '*** Begin Patch\n*** Update File: src\\generated\\feature-flags.ts\n+export const featureFlag = true;\n*** End Patch',
-      operation_type: 'modify',
+      operation_type: 'insert',
     });
     expect(result.routing.pipeline_kind).toBe(PipelineKind.WorkspaceMutation);
     expect(result.risk_event.event_type).toBe(RiskEventType.WorkspaceMutation);
@@ -258,6 +261,39 @@ describe('OpenClaw adapter pipeline', () => {
       paths: ['.env'],
       summary:
         '*** Begin Patch\n*** Update File: .env\n@@\n ENVIRONMENT=production\n+FEATURE_FLAG=true\n*** End Patch',
+      operation_type: 'insert',
+    });
+    expect(result.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
+    expect(result.approval_request).toMatchObject({
+      action_title: 'Approve workspace mutation (insert)',
+      impact_scope: '.env',
+    });
+    expect(result.risk_event.summary).toContain('Operation type: insert.');
+    expect(result.risk_event.explanation).toContain('Workspace operation type=insert.');
+  });
+
+  it('treats a pure insert apply_patch section without an explicit hunk as insert semantics in the approval surface', () => {
+    const result = buildOpenClawEvaluationArtifacts({
+      clock: fixedClock,
+      before_tool_call: {
+        event: {
+          toolName: 'apply_patch',
+          params: {
+            patch:
+              '*** Begin Patch\n*** Update File: .env\n+FEATURE_FLAG=true\n*** End Patch\n',
+          },
+          runId: 'run-patch-inline-insert-1',
+          toolCallId: 'tool-patch-inline-insert-1',
+        },
+      },
+      session_policy: {
+        sessionKey: 'session-patch-inline-insert',
+      },
+    });
+
+    expect(result.evaluation_input.workspace_context).toEqual({
+      paths: ['.env'],
+      summary: '*** Begin Patch\n*** Update File: .env\n+FEATURE_FLAG=true\n*** End Patch',
       operation_type: 'insert',
     });
     expect(result.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
@@ -468,6 +504,40 @@ describe('OpenClaw adapter pipeline', () => {
     expect(result.evaluation_input.workspace_context).toEqual({
       paths: ['.env'],
       summary: 'CLAWGUARD_FEATURE_FLAG',
+      operation_type: 'rename-like',
+    });
+    expect(result.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
+    expect(result.approval_request).toMatchObject({
+      action_title: 'Approve workspace mutation (rename-like)',
+      impact_scope: '.env',
+    });
+    expect(result.risk_event.summary).toContain('rename-like');
+    expect(result.risk_event.explanation).toContain('Workspace operation type=rename-like.');
+  });
+
+  it('surfaces path-reference edit moves as rename-like in approval and audit artifacts', () => {
+    const result = buildOpenClawEvaluationArtifacts({
+      clock: fixedClock,
+      before_tool_call: {
+        event: {
+          toolName: 'edit',
+          params: {
+            path: '.env',
+            oldText: 'src\\templates\\approval-policy.ts',
+            newText: 'src\\guards\\approval-policy.ts',
+          },
+          runId: 'run-edit-path-reference-rename-1',
+          toolCallId: 'tool-edit-path-reference-rename-1',
+        },
+      },
+      session_policy: {
+        sessionKey: 'session-edit-path-reference-rename',
+      },
+    });
+
+    expect(result.evaluation_input.workspace_context).toEqual({
+      paths: ['.env'],
+      summary: 'src\\guards\\approval-policy.ts',
       operation_type: 'rename-like',
     });
     expect(result.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
@@ -694,11 +764,12 @@ describe('OpenClaw adapter pipeline', () => {
     expect(result.policy_decision.requires_approval).toBe(true);
     expect(result.approval_request).toMatchObject({
       status: ApprovalResultStatus.Pending,
-      action_title: 'Approve outbound delivery',
+      action_title: 'Approve outbound delivery (explicit route)',
       impact_scope: 'public-room',
       risk_level: RiskSeverity.High,
     });
     expect(result.risk_event.status).toBe(RiskEventStatus.PendingApproval);
+    expect(result.risk_event.summary).toContain('Route mode=explicit.');
     expect(result.risk_event.explanation).toContain('Matched: github_pat_1234567890_abcdefghijklmnopqrstuvwxyz');
   });
 
@@ -800,13 +871,15 @@ describe('OpenClaw adapter pipeline', () => {
     expect(result.rule_matches.map((match) => match.rule_id)).toContain('destination.public-webhook-url');
     expect(result.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
     expect(result.approval_request).toMatchObject({
+      action_title: 'Approve outbound delivery (implicit route)',
       impact_scope:
         'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token via slack/default (thread 1111.2222)',
     });
+    expect(result.risk_event.summary).toContain('Route mode=implicit.');
     expect(result.risk_event.explanation).toContain(
       'Outbound route=https://hooks.slack.com/services/T00000000/B00000000/very-secret-token via slack/default (thread 1111.2222).',
     );
-    expect(result.risk_event.explanation).toContain('Target mode=implicit.');
+    expect(result.risk_event.explanation).toContain('Route mode=implicit.');
   });
 
   it('keeps a generic public URL as a secondary explanation when secret content is the primary outbound risk', () => {
@@ -1211,4 +1284,5 @@ describe('OpenClaw adapter pipeline', () => {
     expect(postExecutionIntegrated.audit_record.execution_result).toBe(ExecutionStatus.Failed);
     expect(postExecutionIntegrated.audit_record.final_status).toBe(AuditRecordFinalStatus.Failed);
   });
+
 });
