@@ -39,10 +39,12 @@ const CHECKUP_STATUS_ORDER = {
   healthy: 1,
 } as const;
 const WORKSPACE_RESULT_STATE_PATTERN = /workspace result state=([^;]+?)(?:;|$)/i;
+const WORKSPACE_RESULT_CUE_MARKER = 'workspace result state=';
 const OUTBOUND_ROUTE_MODE_PATTERN = /Route mode=([^.;]+?)(?=\.|$)/i;
 const OUTBOUND_ROUTE_PATTERN = /Outbound route=([\s\S]*?)(?=\. [A-Z]|\. $|$)/i;
 type RecentAuditQuickScan = {
   workspaceResultState?: string;
+  workspaceResultCue?: string;
   outboundRouteMode?: 'explicit' | 'implicit';
   outboundRoute?: string;
 };
@@ -208,6 +210,17 @@ function extractAuditDetail(entry: AuditEntry | undefined, pattern: RegExp): str
   return match?.[1] ? trimTrailingPunctuation(match[1]) : undefined;
 }
 
+function readWorkspaceResultCueFromDetail(detail: string): string | undefined {
+  const startIndex = detail.toLowerCase().indexOf(WORKSPACE_RESULT_CUE_MARKER);
+  if (startIndex < 0) {
+    return undefined;
+  }
+
+  const remainder = detail.slice(startIndex + WORKSPACE_RESULT_CUE_MARKER.length);
+  const cue = remainder.split(';', 1)[0]?.trim();
+  return cue && cue.length > 0 ? cue : undefined;
+}
+
 function buildRecentAuditQuickScan(entries: AuditEntry[]): RecentAuditQuickScan {
   const latestWorkspaceEntry = findLatestAuditEntry(entries, (entry) =>
     WORKSPACE_RESULT_STATE_PATTERN.test(entry.detail),
@@ -217,12 +230,15 @@ function buildRecentAuditQuickScan(entries: AuditEntry[]): RecentAuditQuickScan 
   );
 
   const quickScan: RecentAuditQuickScan = {};
-  const workspaceResultState = extractAuditDetail(latestWorkspaceEntry, WORKSPACE_RESULT_STATE_PATTERN);
+  const workspaceResultCue = latestWorkspaceEntry
+    ? readWorkspaceResultCueFromDetail(latestWorkspaceEntry.detail)
+    : undefined;
   const outboundRouteMode = extractAuditDetail(latestOutboundEntry, OUTBOUND_ROUTE_MODE_PATTERN);
   const outboundRoute = extractAuditDetail(latestOutboundEntry, OUTBOUND_ROUTE_PATTERN);
 
-  if (workspaceResultState) {
-    quickScan.workspaceResultState = workspaceResultState;
+  if (workspaceResultCue) {
+    quickScan.workspaceResultState = workspaceResultCue;
+    quickScan.workspaceResultCue = workspaceResultCue;
   }
 
   if (outboundRouteMode === 'explicit' || outboundRouteMode === 'implicit') {
@@ -240,7 +256,10 @@ export function renderRecentAuditQuickScan(entries: AuditEntry[]): string {
   const quickScan = buildRecentAuditQuickScan(entries);
 
   const quickScanItems = [
-    quickScan.workspaceResultState
+    quickScan.workspaceResultCue
+      ? `<li><strong>Workspace result cue:</strong> ${escapeHtml(quickScan.workspaceResultCue)}</li>`
+      : undefined,
+    quickScan.workspaceResultState && quickScan.workspaceResultState !== quickScan.workspaceResultCue
       ? `<li><strong>Workspace result state:</strong> ${escapeHtml(quickScan.workspaceResultState)}</li>`
       : undefined,
     quickScan.outboundRouteMode

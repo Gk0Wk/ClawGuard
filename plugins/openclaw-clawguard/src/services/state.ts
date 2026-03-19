@@ -1037,7 +1037,10 @@ function summarizeStructuredResultField(
   record: Record<string, unknown>,
   fieldName: 'created' | 'updated' | 'deleted' | 'renamed',
 ): string | undefined {
-  const normalizedValue = summarizeStructuredResultFieldValue(record[fieldName]);
+  const normalizedValue =
+    fieldName === 'renamed'
+      ? summarizeStructuredRenameFieldValue(record[fieldName])
+      : summarizeStructuredResultFieldValue(record[fieldName]);
   if (normalizedValue) {
     return `${fieldName}=${normalizedValue}`;
   }
@@ -1047,6 +1050,11 @@ function summarizeStructuredResultField(
 
 function summarizeStructuredResultFieldValue(value: unknown): string | undefined {
   const normalizedValues = summarizeStructuredResultValues(value);
+  return normalizedValues.length > 0 ? normalizedValues.join(', ') : undefined;
+}
+
+function summarizeStructuredRenameFieldValue(value: unknown): string | undefined {
+  const normalizedValues = summarizeStructuredRenameValues(value);
   return normalizedValues.length > 0 ? normalizedValues.join(', ') : undefined;
 }
 
@@ -1105,6 +1113,18 @@ function summarizeStructuredResultValues(value: unknown): string[] {
   return singleValue ? [singleValue] : [];
 }
 
+function summarizeStructuredRenameValues(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => summarizeStructuredRenameEntry(entry))
+      .filter((entry): entry is string => Boolean(entry))
+      .filter((entry, index, all) => all.indexOf(entry) === index);
+  }
+
+  const singleValue = summarizeStructuredRenameEntry(value);
+  return singleValue ? [singleValue] : [];
+}
+
 function summarizeStructuredResultEntry(value: unknown): string | undefined {
   if (typeof value === 'string') {
     return readOptionalString(value);
@@ -1121,6 +1141,46 @@ function summarizeStructuredResultEntry(value: unknown): string | undefined {
   }
 
   return readOptionalStringFromKeys(record, ['path', 'filePath', 'patchPath']);
+}
+
+function summarizeStructuredRenameEntry(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return summarizeStrictStructuredRenamePairValue(value);
+}
+
+function summarizeStrictStructuredRenamePairValue(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const fromPath = readOptionalStringFromKeys(record, [
+    'fromPath',
+    'oldPath',
+    'sourcePath',
+    'from',
+    'old',
+  ]);
+  const toPath = readOptionalStringFromKeys(record, [
+    'toPath',
+    'newPath',
+    'targetPath',
+    'to',
+    'new',
+  ]);
+
+  if (!fromPath || !toPath) {
+    return undefined;
+  }
+
+  if (fromPath.trim().toLowerCase() === toPath.trim().toLowerCase()) {
+    return undefined;
+  }
+
+  return `${fromPath} -> ${toPath}`;
 }
 
 function summarizeStructuredResultPathPairValue(value: unknown): string | undefined {

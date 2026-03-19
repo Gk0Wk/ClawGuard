@@ -1540,6 +1540,76 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(getLatestAuditByKind(state, 'allowed')?.detail).not.toContain('renamed=');
   });
 
+  it('does not promote single-sided renamed objects into rename-like closure summaries', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const persistHandler = createToolResultPersistHandler(state);
+    const { event, context } = createWorkspaceWriteEvent({
+      path: 'src\\templates\\ci-template.yml',
+      content: 'name: CI\n',
+    });
+
+    expect(beforeHandler(event, context)).toBeUndefined();
+
+    persistHandler(
+      {
+        ...event,
+        result: {
+          status: 'completed',
+          persisted: true,
+          renamed: {
+            fromPath: 'src\\templates\\ci-template.yml',
+          },
+        },
+      },
+      context,
+    );
+
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
+      'Result detail: tool result status=completed',
+    );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).not.toContain(
+      'workspace result state=rename-like via renamed',
+    );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).not.toContain('renamed=');
+  });
+
+  it('does not promote single-sided sourcePath/targetPath renamed entries into rename-like closure summaries', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const persistHandler = createToolResultPersistHandler(state);
+    const { event, context } = createWorkspaceWriteEvent({
+      path: 'src\\templates\\ops-template.yml',
+      content: 'name: Ops\n',
+    });
+
+    expect(beforeHandler(event, context)).toBeUndefined();
+
+    persistHandler(
+      {
+        ...event,
+        result: {
+          status: 'completed',
+          persisted: true,
+          renamed: [
+            {
+              targetPath: '.github\\workflows\\ops-template.yml',
+            },
+          ],
+        },
+      },
+      context,
+    );
+
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
+      'Result detail: tool result status=completed',
+    );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).not.toContain(
+      'workspace result state=rename-like via renamed',
+    );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).not.toContain('renamed=');
+  });
+
   it('summarizes mixed readable workspace result objects without widening ambiguous entries', () => {
     const state = createClawGuardState();
     const beforeHandler = createBeforeToolCallHandler(state);
@@ -1835,7 +1905,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(dashboardHtmlResponse.statusCode).toBe(200);
     expect(dashboardHtmlResponse.body).toContain('Recent audit quick scan:');
-    expect(dashboardHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
+    expect(dashboardHtmlResponse.body).toContain('Workspace result cue:</strong> insert via created');
     expect(dashboardHtmlResponse.body).toContain('Outbound route mode:</strong> explicit');
     expect(dashboardHtmlResponse.body).toContain(
       'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
@@ -1856,6 +1926,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       recentAudit: {
         quickScan: {
           workspaceResultState?: string;
+          workspaceResultCue?: string;
           outboundRouteMode?: string;
           outboundRoute?: string;
         };
@@ -1863,6 +1934,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     };
     expect(dashboardPayload.recentAudit.quickScan).toEqual({
       workspaceResultState: 'insert via created',
+      workspaceResultCue: 'insert via created',
       outboundRouteMode: 'explicit',
       outboundRoute: 'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
     });
@@ -1878,7 +1950,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(checkupHtmlResponse.statusCode).toBe(200);
     expect(checkupHtmlResponse.body).toContain('Recent audit quick scan:');
-    expect(checkupHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
+    expect(checkupHtmlResponse.body).toContain('Workspace result cue:</strong> insert via created');
     expect(checkupHtmlResponse.body).toContain('Outbound route mode:</strong> explicit');
     expect(checkupHtmlResponse.body).toContain(
       'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
@@ -1973,7 +2045,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(dashboardHtmlResponse.statusCode).toBe(200);
     expect(dashboardHtmlResponse.body).toContain('Recent audit quick scan:');
-    expect(dashboardHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
+    expect(dashboardHtmlResponse.body).toContain('Workspace result cue:</strong> insert via created');
     expect(dashboardHtmlResponse.body).toContain(
       'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
     );
@@ -1990,7 +2062,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(checkupHtmlResponse.statusCode).toBe(200);
     expect(checkupHtmlResponse.body).toContain('Recent audit quick scan:');
-    expect(checkupHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
+    expect(checkupHtmlResponse.body).toContain('Workspace result cue:</strong> insert via created');
     expect(checkupHtmlResponse.body).toContain(
       'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
     );
@@ -2018,7 +2090,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(dashboardHtmlResponse.statusCode).toBe(200);
     expect(dashboardHtmlResponse.body).toContain('Recent audit quick scan:');
-    expect(dashboardHtmlResponse.body).toContain('Workspace result state:</strong> modify via updated');
+    expect(dashboardHtmlResponse.body).toContain('Workspace result cue:</strong> modify via updated');
     expect(dashboardHtmlResponse.body).toContain('Outbound route mode:</strong> implicit');
     expect(dashboardHtmlResponse.body).not.toContain('Outbound route:</strong>');
 
@@ -2037,6 +2109,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       recentAudit: {
         quickScan: {
           workspaceResultState?: string;
+          workspaceResultCue?: string;
           outboundRouteMode?: string;
           outboundRoute?: string;
         };
@@ -2044,6 +2117,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     };
     expect(dashboardPayload.recentAudit.quickScan).toEqual({
       workspaceResultState: 'modify via updated',
+      workspaceResultCue: 'modify via updated',
       outboundRouteMode: 'implicit',
     });
     expect(dashboardPayload.recentAudit.quickScan).not.toHaveProperty('outboundRoute');
@@ -2059,7 +2133,8 @@ describe('OpenClaw ClawGuard plugin spike', () => {
 
     expect(checkupHtmlResponse.statusCode).toBe(200);
     expect(checkupHtmlResponse.body).toContain('Recent audit quick scan:');
-    expect(checkupHtmlResponse.body).toContain('Workspace result state:</strong> modify via updated');
+    expect(checkupHtmlResponse.body).toContain('Workspace result cue:</strong> modify via updated');
+    expect(checkupHtmlResponse.body).not.toContain('Workspace result state:</strong>');
     expect(checkupHtmlResponse.body).toContain('Outbound route mode:</strong> implicit');
     expect(checkupHtmlResponse.body).not.toContain('Outbound route:</strong>');
   });
