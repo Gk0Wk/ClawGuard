@@ -353,11 +353,18 @@ export function renderAuditLiveQueueHintCopy(): string {
   return AUDIT_LIVE_QUEUE_HINT_COPY;
 }
 
-export function renderAuditFlowHandoffCopy(origin: 'approvals' | 'direct', isStillLive: boolean): string {
+export function renderAuditFlowHandoffCopy(
+  origin: 'approvals' | 'direct' | 'host-outbound',
+  isStillLive: boolean,
+): string {
   if (origin === 'approvals') {
     return isStillLive
       ? `This replay started in ${renderOperatorActionLink(getOperatorAction('review-approvals'), 'Approvals')}. Use the live queue for the next operator step, then return here for final closure.`
       : AUDIT_APPROVALS_CLOSED_HANDOFF_COPY;
+  }
+
+  if (origin === 'host-outbound') {
+    return 'This replay came from host-level direct outbound. There is no live Approvals queue for this lane, so inspect the recorded ending here.';
   }
 
   return AUDIT_DIRECT_HANDOFF_COPY;

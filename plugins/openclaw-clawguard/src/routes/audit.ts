@@ -25,6 +25,7 @@ type AuditKindGuide = {
 };
 
 type RouteMode = 'explicit' | 'implicit';
+type AuditFlowOrigin = 'Approvals queue' | 'Direct host outbound' | 'Direct audit trail';
 
 type TimelineEvent = {
   readonly recordId: string;
@@ -332,13 +333,14 @@ function buildTimelineFlow(flowId: string, entries: AuditEntry[]): TimelineFlow 
   const pendingActionId = firstDefined(entries.map((entry) => entry.pending_action_id));
   const runId = firstDefined(entries.map((entry) => entry.run_id));
   const routeMode = summarizeFlowRouteMode(entries);
+  const workspaceState = summarizeFlowWorkspaceState(entries);
   const userDecision = summarizeFlowUserDecision(entries);
   const finalOutcome = summarizeFlowOutcome(entries, userDecision);
   const origin = summarizeFlowOrigin(entries, pendingActionId);
 
   return {
     flowId,
-    title: buildFlowTitle(toolName, pendingActionId),
+    title: buildFlowTitle(toolName, pendingActionId, workspaceState),
     subtitle: buildFlowSubtitle(runId, pendingActionId),
     startedAt: firstEntry.timestamp,
     startedAtLabel: formatTimestamp(firstEntry.timestamp),
@@ -469,7 +471,7 @@ function summarizeFlowOutcome(entries: AuditEntry[], userDecision: string): stri
   return 'No final outcome yet';
 }
 
-function summarizeFlowOrigin(entries: AuditEntry[], pendingActionId?: string): string {
+function summarizeFlowOrigin(entries: AuditEntry[], pendingActionId?: string): AuditFlowOrigin {
   if (
     pendingActionId ||
     entries.some((entry) =>
@@ -481,11 +483,21 @@ function summarizeFlowOrigin(entries: AuditEntry[], pendingActionId?: string): s
     return 'Approvals queue';
   }
 
+  if (entries.some((entry) => entry.tool_name === 'message_sending')) {
+    return 'Direct host outbound';
+  }
+
   return 'Direct audit trail';
 }
 
-function summarizeFlowInspectNext(origin: string, userDecision: string, finalOutcome: string): string {
+function summarizeFlowInspectNext(origin: AuditFlowOrigin, userDecision: string, finalOutcome: string): string {
   if (origin !== 'Approvals queue') {
+    if (origin === 'Direct host outbound') {
+      return finalOutcome === 'No final outcome yet'
+        ? 'Host-level direct outbound never enters Approvals. Inspect later entries here for the eventual delivery ending.'
+        : `Host-level direct outbound never enters Approvals. Inspect ${finalOutcome} as the current replay ending.`;
+    }
+
     return finalOutcome === 'No final outcome yet'
       ? 'Inspect later entries here for the eventual outcome.'
       : `Inspect ${finalOutcome} as the current replay ending.`;
@@ -518,9 +530,22 @@ function summarizeFlowInspectNext(origin: string, userDecision: string, finalOut
   return `Inspect ${finalOutcome} as the latest approval-originated replay ending.`;
 }
 
-function buildFlowTitle(toolName?: string, pendingActionId?: string): string {
-  const normalizedTool = toolName ? `${toolName} replay` : 'Recorded replay';
+function buildFlowTitle(toolName?: string, pendingActionId?: string, workspaceState?: string): string {
+  const normalizedTool = toolName
+    ? `${toolName} replay${workspaceState ? ` (${workspaceState})` : ''}`
+    : 'Recorded replay';
   return pendingActionId ? `${normalizedTool} for pending approval` : normalizedTool;
+}
+
+function summarizeFlowWorkspaceState(entries: AuditEntry[]): string | undefined {
+  for (const entry of [...entries].reverse()) {
+    const workspaceState = readWorkspaceStateFromDetail(entry.detail);
+    if (workspaceState) {
+      return workspaceState;
+    }
+  }
+
+  return undefined;
 }
 
 function buildFlowSubtitle(runId?: string, pendingActionId?: string): string {
@@ -544,6 +569,15 @@ function readRouteModeFromDetail(detail: string): RouteMode | undefined {
 
   const routeMode = match[1]?.toLowerCase();
   return routeMode === 'explicit' || routeMode === 'implicit' ? routeMode : undefined;
+}
+
+function readWorkspaceStateFromDetail(detail: string): string | undefined {
+  const workspaceStateMatch = detail.match(/\bworkspace result state=([a-z-]+)\b/i);
+  if (workspaceStateMatch?.[1]) {
+    return workspaceStateMatch[1].toLowerCase();
+  }
+
+  return detail.match(/\boperation type=([a-z-]+)\b/i)?.[1]?.toLowerCase();
 }
 
 function formatTimestamp(value: string): string {
@@ -591,7 +625,7 @@ function renderAuditPage(payload: AuditTimelinePayload): string {
                   flow.finalOutcome === 'Waiting for decision' ||
                     flow.finalOutcome === 'Waiting for approved retry',
                 )
-              : renderAuditFlowHandoffCopy('direct', false)
+              : renderAuditFlowHandoffCopy(flow.origin === 'Direct host outbound' ? 'host-outbound' : 'direct', false)
           }</p>
           <ol class="audit-events">
             ${flow.events

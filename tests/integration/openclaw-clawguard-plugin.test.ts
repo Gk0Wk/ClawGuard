@@ -1234,6 +1234,74 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
   });
 
+  it('normalizes workspace result operation_type synonyms into the shared final state labels', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const persistHandler = createToolResultPersistHandler(state);
+    const { event, context } = createWorkspaceWriteEvent({
+      path: 'src\\generated\\feature-flags.ts',
+      content: 'export const featureFlag = true;\n',
+    });
+
+    expect(beforeHandler(event, context)).toBeUndefined();
+
+    persistHandler(
+      {
+        ...event,
+        result: {
+          status: 'completed',
+          operationType: 'renamed',
+          renamed: {
+            fromPath: 'src\\templates\\legacy-banner.ts',
+            toPath: 'src\\templates\\hero-banner.ts',
+          },
+        },
+      },
+      context,
+    );
+
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
+      'Result detail: operation type=renamed; tool result status=completed; workspace result state=rename-like via operation_type; renamed=src\\templates\\legacy-banner.ts -> src\\templates\\hero-banner.ts',
+    );
+  });
+
+  it('surfaces workspace result state in audit replay titles after tool_result_persist closes the flow', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const persistHandler = createToolResultPersistHandler(state);
+    const auditRoute = createAuditRoute(state);
+    const { event, context } = createWorkspaceWriteEvent({
+      path: 'src\\generated\\feature-flags.ts',
+      content: 'export const featureFlag = true;\n',
+    });
+
+    expect(beforeHandler(event, context)).toBeUndefined();
+
+    persistHandler(
+      {
+        ...event,
+        result: {
+          status: 'completed',
+          persisted: true,
+          created: ['src\\generated\\feature-flags.ts'],
+        },
+      },
+      context,
+    );
+
+    const auditHtmlResponse = createMockResponse();
+    auditRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/audit',
+      } as never,
+      auditHtmlResponse as never,
+    );
+
+    expect(auditHtmlResponse.statusCode).toBe(200);
+    expect(auditHtmlResponse.body).toContain('write replay (insert)');
+  });
+
   it('keeps exec finalization on after_tool_call even when tool_result_persist fires', () => {
     const state = createClawGuardState();
     const beforeHandler = createBeforeToolCallHandler(state);
@@ -1286,6 +1354,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(state.pendingActions.list()).toHaveLength(0);
     expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain(
       'Blocked host outbound delivery before channel send.',
+    );
+    expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain(
+      'Outbound route=C123 via slack/default (thread 1111.2222).',
     );
     expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain('Route mode=explicit.');
     resultHandler(
@@ -1359,6 +1430,33 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(auditHtmlResponse.body).toContain('Route mode=explicit.');
   });
 
+  it('explains host-level direct outbound as an audit-only lane in the replay view', () => {
+    const state = createClawGuardState();
+    const sendingHandler = createMessageSendingHandler(state);
+    const auditRoute = createAuditRoute(state);
+    const { event, context } = createHostOutboundMessageEvent({
+      content: 'Bearer abcdefghijklmnopqrstuvwxyz123456',
+    });
+
+    expect(sendingHandler(event, context)).toEqual({ cancel: true });
+
+    const auditHtmlResponse = createMockResponse();
+    auditRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/audit',
+      } as never,
+      auditHtmlResponse as never,
+    );
+
+    expect(auditHtmlResponse.statusCode).toBe(200);
+    expect(auditHtmlResponse.body).toContain('Origin:</strong> Direct host outbound');
+    expect(auditHtmlResponse.body).toContain('There is no live Approvals queue for this lane');
+    expect(auditHtmlResponse.body).toContain(
+      'Host-level direct outbound never enters Approvals. Inspect Blocked as the current replay ending.',
+    );
+  });
+
   it('closes an approval-gated outbound flow through after_tool_call with route-aware audit detail', () => {
     const state = createClawGuardState();
     const beforeHandler = createBeforeToolCallHandler(state);
@@ -1396,6 +1494,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       pending_action_id: pending.pending_action_id,
     });
     expect(allowed?.detail).toContain('Final outcome allowed after execution.');
+    expect(allowed?.detail).toContain(
+      'Outbound route=https://hooks.slack.com/services/T00000000/B00000000/very-secret-token.',
+    );
     expect(allowed?.detail).toContain('Route mode=explicit.');
     expect(allowed?.detail).toContain('Result detail: delivery completed');
   });
