@@ -100,7 +100,7 @@ export const INSTALL_DEMO = {
   coverage:
     'Risky exec approvals, minimal outbound checks, and limited workspace mutation heuristics for write / edit / apply_patch. This alpha UI stays fake-only and does not claim broad outbound or workspace coverage.',
   limitations:
-    'Host-level direct outbound cannot enter the pending approval loop, so message_sending stays on the hard-block path for both approve_required and block cases; message_sent only closes sends that were actually allowed to leave the host, while tool-level approvals stay on message / sessions_send.',
+    'Host-level direct outbound cannot enter the pending approval loop, so message_sending never enters the pending queue; message_sent only closes sends that were actually allowed to leave the host, while tool-level approvals stay on message / sessions_send.',
   navigationPosture:
     'There is no stock Control UI Security tab for this alpha, and ClawGuard does not depend on a patched nav hack.',
 } as const;
@@ -136,7 +136,7 @@ const COVERAGE_LANES: readonly CoverageLane[] = [
     id: 'outbound',
     label: 'Outbound',
     summary:
-      'Tool-level message and sessions_send can queue approvals, while host-level message_sending stays on the hard-block path and only closes through message_sent after a send actually leaves the host.',
+      'Tool-level message and sessions_send can queue approvals in Approvals, while host-level message_sending never enters the pending queue and only closes through message_sent after a send actually leaves the host.',
   },
   {
     id: 'workspace',
@@ -259,12 +259,21 @@ export function renderInstallDemoPostureNote(): string {
   return `<p><strong>${INSTALL_DEMO.demoPosture}</strong> ${INSTALL_DEMO.navigationPosture}</p>`;
 }
 
+export function renderOutboundHandoffCopy(): string {
+  return `<p><strong>Outbound handoff</strong> keeps the two lanes separate: tool-level approvals for <code>message</code> and <code>sessions_send</code>, and host-level direct outbound for <code>message_sending</code>.</p>
+<ul>
+<li><strong>Tool-level approvals</strong> create a live queue item in <a href="${APPROVALS_ROUTE_PATH}">Approvals</a>. That is where the operator approves, denies, or retries the outbound delivery.</li>
+<li><strong>Host-level direct outbound</strong> never enters the pending approval loop. Risky sends are blocked immediately, and only a send that actually leaves the host is closed by <code>message_sent</code> and explained in <a href="${AUDIT_ROUTE_PATH}">Audit</a>.</li>
+</ul>
+<p><small>If there is a live pending action, stay in the tool-level lane. If the host blocked the send or only closed it after delivery, inspect Audit for the final replay.</small></p>`;
+}
+
 export function renderLifecycleHandoffCopy(mode: ControlSurfaceHandoffMode): string {
   switch (mode) {
     case 'dashboard':
-      return `Need the deeper Alpha explanation? Open the plugin-owned <a href="${CHECKUP_ROUTE_PATH}">full safety checkup</a> for the same read-only posture source with per-item evidence and follow-up actions, then use <a href="${APPROVALS_ROUTE_PATH}">Approvals</a> for any live item that still needs a decision or retry, and use <a href="${AUDIT_ROUTE_PATH}">Audit</a> for the final closure after the item leaves the queue.`;
+      return `Need the deeper Alpha explanation? Open the plugin-owned <a href="${CHECKUP_ROUTE_PATH}">full safety checkup</a> for the same read-only posture source with per-item evidence and follow-up actions. For outbound, tool-level <code>message</code> and <code>sessions_send</code> approvals live in <a href="${APPROVALS_ROUTE_PATH}">Approvals</a>, while host-level <code>message_sending</code> never enters the live queue and belongs in <a href="${AUDIT_ROUTE_PATH}">Audit</a> after the send is blocked or actually delivered.`;
     case 'checkup':
-      return 'When an item is still live, continue to Approvals to act on it; when it has already closed, continue to Audit for the final replay trail.';
+      return `When an item is still live, continue to <a href="${APPROVALS_ROUTE_PATH}">Approvals</a> to act on it; when it has already closed, continue to <a href="${AUDIT_ROUTE_PATH}">Audit</a> for the final replay trail. For outbound, tool-level approvals stay live in Approvals, and host-level direct outbound is only explained in Audit after the send blocks or closes.`;
   }
 }
 

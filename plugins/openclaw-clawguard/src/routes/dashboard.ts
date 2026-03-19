@@ -16,6 +16,7 @@ import {
   renderControlSurfaceDomainBreakdown,
   renderInstallDemoPostureNote,
   renderLifecycleHandoffCopy,
+  renderOutboundHandoffCopy,
   renderOperatorActionLink,
   summarizeControlSurfaceDomains,
   summarizeControlSurfaceLanePressure,
@@ -437,6 +438,10 @@ function renderDashboardPage(state: ClawGuardState): string {
       <p>Current limitation: ${INSTALL_DEMO.limitations}</p>
       <h3>Current bounded coverage</h3>
       ${renderCoverageMatrix()}
+    </section>
+    <section>
+      <h2>Outbound handoff</h2>
+      ${renderOutboundHandoffCopy()}
     </section>
     <section>
       <h2>Live posture by domain</h2>

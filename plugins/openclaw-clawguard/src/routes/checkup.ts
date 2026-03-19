@@ -12,6 +12,7 @@ import {
   renderControlSurfaceDomainBreakdown,
   renderInstallDemoPostureNote,
   renderLifecycleHandoffCopy,
+  renderOutboundHandoffCopy,
   renderOperatorActionLink,
   summarizeControlSurfaceLanePressure,
 } from './shared.js';
@@ -102,6 +103,10 @@ function renderCheckupPage(state: ClawGuardState): string {
       <h2>Current bounded coverage</h2>
       <p>This is the fixed install-demo legend for the current product surface. It explains what each active lane does today without claiming broader runtime coverage.</p>
       ${renderCoverageMatrix()}
+    </section>
+    <section>
+      <h2>Outbound handoff</h2>
+      ${renderOutboundHandoffCopy()}
     </section>
     <section>
       <h2>Live posture by domain</h2>
