@@ -1594,7 +1594,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(auditHtmlResponse.body).toContain('Route mode=explicit.');
   });
 
-  it('surfaces workspace result state and outbound route mode as a quick scan on dashboard and checkup', () => {
+  it('surfaces workspace result state, outbound route mode, and outbound route as a quick scan on dashboard and checkup', () => {
     const state = createClawGuardState();
     const beforeHandler = createBeforeToolCallHandler(state);
     const persistHandler = createToolResultPersistHandler(state);
@@ -1637,6 +1637,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(dashboardHtmlResponse.body).toContain('Recent audit quick scan:');
     expect(dashboardHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
     expect(dashboardHtmlResponse.body).toContain('Outbound route mode:</strong> explicit');
+    expect(dashboardHtmlResponse.body).toContain(
+      'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+    );
 
     const checkupHtmlResponse = createMockResponse();
     checkupRoute(
@@ -1651,6 +1654,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(checkupHtmlResponse.body).toContain('Recent audit quick scan:');
     expect(checkupHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
     expect(checkupHtmlResponse.body).toContain('Outbound route mode:</strong> explicit');
+    expect(checkupHtmlResponse.body).toContain(
+      'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+    );
   });
 
   it('explains host-level direct outbound as an audit-only lane in the replay view', () => {

@@ -40,6 +40,7 @@ const CHECKUP_STATUS_ORDER = {
 } as const;
 const WORKSPACE_RESULT_STATE_PATTERN = /workspace result state=([^;]+?)(?:;|$)/i;
 const OUTBOUND_ROUTE_MODE_PATTERN = /Route mode=([^.;]+?)(?=\.|$)/i;
+const OUTBOUND_ROUTE_PATTERN = /Outbound route=([\s\S]*?)(?=\. [A-Z]|\. $|$)/i;
 
 function trimTrailingPunctuation(value: string): string {
   return value.trim().replace(/[.;,]+$/u, '');
@@ -200,6 +201,7 @@ function extractAuditDetail(entries: AuditEntry[], pattern: RegExp): string | un
 export function renderRecentAuditQuickScan(entries: AuditEntry[]): string {
   const workspaceResultState = extractAuditDetail(entries, WORKSPACE_RESULT_STATE_PATTERN);
   const outboundRouteMode = extractAuditDetail(entries, OUTBOUND_ROUTE_MODE_PATTERN);
+  const outboundRoute = extractAuditDetail(entries, OUTBOUND_ROUTE_PATTERN);
 
   const quickScanItems = [
     workspaceResultState
@@ -207,6 +209,9 @@ export function renderRecentAuditQuickScan(entries: AuditEntry[]): string {
       : undefined,
     outboundRouteMode
       ? `<li><strong>Outbound route mode:</strong> ${escapeHtml(outboundRouteMode)}</li>`
+      : undefined,
+    outboundRoute
+      ? `<li><strong>Outbound route:</strong> ${escapeHtml(outboundRoute)}</li>`
       : undefined,
   ].filter((item): item is string => typeof item === 'string');
 
