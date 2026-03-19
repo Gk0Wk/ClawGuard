@@ -60,6 +60,7 @@ type TimelineFlow = {
   readonly origin: string;
   readonly riskDecision: string;
   readonly workspaceState?: string;
+  readonly workspaceResultCue?: string;
   readonly outboundRoute?: string;
   readonly routeMode?: RouteMode;
   readonly systemAction: string;
@@ -101,6 +102,7 @@ type AuditTimelinePayload = {
       readonly latestOutboundRoute?: string;
       readonly latestOutboundRouteMode?: RouteMode;
       readonly latestWorkspaceResultState?: string;
+      readonly latestWorkspaceResultCue?: string;
     };
   };
 };
@@ -249,6 +251,7 @@ function buildAuditPayload(state: ClawGuardState): AuditTimelinePayload {
   const latestOutboundRoute = findLatestOutboundRoute(flows);
   const latestOutboundRouteMode = findLatestOutboundRouteMode(flows);
   const latestWorkspaceResultState = findLatestWorkspaceResultState(flows);
+  const latestWorkspaceResultCue = findLatestWorkspaceResultCue(flows);
   const flowOutcomes = flows.reduce(
     (summary, flow) => {
       if (flow.origin === 'Approvals queue') {
@@ -314,12 +317,13 @@ function buildAuditPayload(state: ClawGuardState): AuditTimelinePayload {
           ...guide,
         }),
       ),
-      ...(latestOutboundRoute || latestOutboundRouteMode || latestWorkspaceResultState
+      ...(latestOutboundRoute || latestOutboundRouteMode || latestWorkspaceResultState || latestWorkspaceResultCue
         ? {
             latest: {
               ...(latestOutboundRoute ? { latestOutboundRoute } : {}),
               ...(latestOutboundRouteMode ? { latestOutboundRouteMode } : {}),
               ...(latestWorkspaceResultState ? { latestWorkspaceResultState } : {}),
+              ...(latestWorkspaceResultCue ? { latestWorkspaceResultCue } : {}),
             },
           }
         : {}),
@@ -355,6 +359,7 @@ function buildTimelineFlow(flowId: string, entries: AuditEntry[]): TimelineFlow 
   const routeMode = summarizeFlowRouteMode(entries);
   const outboundRoute = summarizeFlowOutboundRoute(entries);
   const workspaceState = summarizeFlowWorkspaceState(entries);
+  const workspaceResultCue = summarizeFlowWorkspaceResultCue(entries);
   const userDecision = summarizeFlowUserDecision(entries);
   const finalOutcome = summarizeFlowOutcome(entries, userDecision);
   const origin = summarizeFlowOrigin(entries, pendingActionId);
@@ -373,6 +378,7 @@ function buildTimelineFlow(flowId: string, entries: AuditEntry[]): TimelineFlow 
     origin,
     riskDecision: summarizeFlowRiskDecision(entries),
     ...(workspaceState ? { workspaceState } : {}),
+    ...(workspaceResultCue ? { workspaceResultCue } : {}),
     ...(outboundRoute ? { outboundRoute } : {}),
     ...(routeMode ? { routeMode } : {}),
     systemAction: summarizeFlowSystemAction(entries),
@@ -472,6 +478,16 @@ function findLatestWorkspaceResultState(flows: TimelineFlow[]): string | undefin
   for (const flow of flows) {
     if (flow.workspaceState) {
       return flow.workspaceState;
+    }
+  }
+
+  return undefined;
+}
+
+function findLatestWorkspaceResultCue(flows: TimelineFlow[]): string | undefined {
+  for (const flow of flows) {
+    if (flow.workspaceResultCue) {
+      return flow.workspaceResultCue;
     }
   }
 
@@ -614,6 +630,17 @@ function summarizeFlowWorkspaceState(entries: AuditEntry[]): string | undefined 
   return undefined;
 }
 
+function summarizeFlowWorkspaceResultCue(entries: AuditEntry[]): string | undefined {
+  for (const entry of [...entries].reverse()) {
+    const workspaceResultCue = readWorkspaceResultCueFromDetail(entry.detail);
+    if (workspaceResultCue) {
+      return workspaceResultCue;
+    }
+  }
+
+  return undefined;
+}
+
 function buildFlowSubtitle(runId?: string, pendingActionId?: string): string {
   const parts = [
     pendingActionId ? `Pending action ${pendingActionId}` : undefined,
@@ -665,6 +692,18 @@ function readWorkspaceStateFromDetail(detail: string): string | undefined {
   return detail.match(/\boperation type=([a-z-]+)\b/i)?.[1]?.toLowerCase();
 }
 
+function readWorkspaceResultCueFromDetail(detail: string): string | undefined {
+  const marker = 'workspace result state=';
+  const startIndex = detail.toLowerCase().indexOf(marker);
+  if (startIndex < 0) {
+    return undefined;
+  }
+
+  const remainder = detail.slice(startIndex + marker.length);
+  const cue = remainder.split(';', 1)[0]?.trim();
+  return cue && cue.length > 0 ? cue : undefined;
+}
+
 function formatTimestamp(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -684,6 +723,7 @@ function renderAuditPage(payload: AuditTimelinePayload): string {
   const latestOutboundRoute = findLatestOutboundRoute(payload.timeline.flows);
   const latestOutboundRouteMode = findLatestOutboundRouteMode(payload.timeline.flows);
   const latestWorkspaceResultState = findLatestWorkspaceResultState(payload.timeline.flows);
+  const latestWorkspaceResultCue = findLatestWorkspaceResultCue(payload.timeline.flows);
   const flowCards = payload.timeline.flows
     .map(
       (flow) => `
@@ -817,6 +857,7 @@ function renderAuditPage(payload: AuditTimelinePayload): string {
       <p>${renderAuditLiveQueueHintCopy()}</p>
       ${latestOutboundRoute ? `<p><strong>Latest outbound route in recent replay:</strong> ${escapeHtml(latestOutboundRoute)} <small>(parsed from the latest replay detail, not the live queue)</small></p>` : ''}
       ${latestOutboundRouteMode ? `<p><strong>Latest outbound route mode in recent replay:</strong> ${escapeHtml(latestOutboundRouteMode)} <small>(parsed from the latest replay detail, not the live queue)</small></p>` : ''}
+      ${latestWorkspaceResultCue ? `<p><strong>Latest workspace result cue in recent replay:</strong> ${escapeHtml(latestWorkspaceResultCue)} <small>(parsed from the latest replay detail, not the live queue)</small></p>` : ''}
       ${latestWorkspaceResultState ? `<p><strong>Latest workspace result state in recent replay:</strong> ${escapeHtml(latestWorkspaceResultState)} <small>(parsed from the latest replay detail, not the live queue)</small></p>` : ''}
       <p><strong>Current posture:</strong> ${escapeHtml(INSTALL_DEMO.demoPosture)}</p>
       <p><strong>Navigation posture:</strong> ${escapeHtml(INSTALL_DEMO.navigationPosture)}</p>

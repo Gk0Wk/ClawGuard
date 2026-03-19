@@ -1145,6 +1145,10 @@ function summarizeStructuredResultPathPairValue(value: unknown): string | undefi
   ]);
 
   if (fromPath && toPath) {
+    if (fromPath.trim().toLowerCase() === toPath.trim().toLowerCase()) {
+      return undefined;
+    }
+
     return `${fromPath} -> ${toPath}`;
   }
 

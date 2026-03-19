@@ -1468,6 +1468,78 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
   });
 
+  it('does not promote no-op renamed objects into rename-like closure summaries', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const persistHandler = createToolResultPersistHandler(state);
+    const { event, context } = createWorkspaceWriteEvent({
+      path: 'src\\templates\\ci-template.yml',
+      content: 'name: CI\n',
+    });
+
+    expect(beforeHandler(event, context)).toBeUndefined();
+
+    persistHandler(
+      {
+        ...event,
+        result: {
+          status: 'completed',
+          persisted: true,
+          renamed: {
+            fromPath: 'src\\templates\\ci-template.yml',
+            toPath: 'src\\templates\\ci-template.yml',
+          },
+        },
+      },
+      context,
+    );
+
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
+      'Result detail: tool result status=completed',
+    );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).not.toContain(
+      'workspace result state=rename-like via renamed',
+    );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).not.toContain('renamed=');
+  });
+
+  it('does not promote no-op sourcePath/targetPath renamed entries into rename-like closure summaries', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const persistHandler = createToolResultPersistHandler(state);
+    const { event, context } = createWorkspaceWriteEvent({
+      path: 'src\\templates\\ops-template.yml',
+      content: 'name: Ops\n',
+    });
+
+    expect(beforeHandler(event, context)).toBeUndefined();
+
+    persistHandler(
+      {
+        ...event,
+        result: {
+          status: 'completed',
+          persisted: true,
+          renamed: [
+            {
+              sourcePath: '.github\\workflows\\ops-template.yml',
+              targetPath: '.github\\workflows\\ops-template.yml',
+            },
+          ],
+        },
+      },
+      context,
+    );
+
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
+      'Result detail: tool result status=completed',
+    );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).not.toContain(
+      'workspace result state=rename-like via renamed',
+    );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).not.toContain('renamed=');
+  });
+
   it('summarizes mixed readable workspace result objects without widening ambiguous entries', () => {
     const state = createClawGuardState();
     const beforeHandler = createBeforeToolCallHandler(state);
@@ -1826,6 +1898,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(auditHtmlResponse.body).toContain(
       'Latest workspace result state in recent replay:</strong> insert <small>(parsed from the latest replay detail, not the live queue)</small>',
     );
+    expect(auditHtmlResponse.body).toContain('Latest workspace result cue in recent replay:');
+    expect(auditHtmlResponse.body).toContain(
+      'Latest workspace result cue in recent replay:</strong> insert via created <small>(parsed from the latest replay detail, not the live queue)</small>',
+    );
     expect(auditHtmlResponse.body).toContain('Latest outbound route in recent replay:');
     expect(auditHtmlResponse.body).toContain(
       'Latest outbound route in recent replay:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
@@ -1848,6 +1924,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
           latestOutboundRoute?: string;
           latestOutboundRouteMode?: string;
           latestWorkspaceResultState?: string;
+          latestWorkspaceResultCue?: string;
         };
       };
     };
@@ -1855,6 +1932,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       latestOutboundRoute: 'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
       latestOutboundRouteMode: 'explicit',
       latestWorkspaceResultState: 'insert',
+      latestWorkspaceResultCue: 'insert via created',
     });
   });
 
