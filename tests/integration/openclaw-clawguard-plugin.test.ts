@@ -1686,6 +1686,67 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
   });
 
+  it('keeps quick-scan fields anchored to the latest relevant audit entry per lane', () => {
+    const state = createClawGuardState();
+    state.audit.record({
+      kind: 'blocked',
+      detail: 'Workspace result state=delete via removed; older workspace signal.',
+      tool_name: 'write',
+    });
+    state.audit.record({
+      kind: 'blocked',
+      detail: 'Route mode=explicit. older outbound route mode only.',
+      tool_name: 'message',
+    });
+    state.audit.record({
+      kind: 'blocked',
+      detail: 'Workspace result state=insert via created; newest workspace signal.',
+      tool_name: 'write',
+    });
+    state.audit.record({
+      kind: 'blocked',
+      detail: 'Outbound route=https://hooks.slack.com/services/T00000000/B00000000/very-secret-token.',
+      tool_name: 'message',
+    });
+
+    const dashboardRoute = createDashboardRoute(state);
+    const checkupRoute = createCheckupRoute(state);
+
+    const dashboardHtmlResponse = createMockResponse();
+    dashboardRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/dashboard',
+      } as never,
+      dashboardHtmlResponse as never,
+    );
+
+    expect(dashboardHtmlResponse.statusCode).toBe(200);
+    expect(dashboardHtmlResponse.body).toContain('Recent audit quick scan:');
+    expect(dashboardHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
+    expect(dashboardHtmlResponse.body).toContain(
+      'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+    );
+    expect(dashboardHtmlResponse.body).not.toContain('Outbound route mode:</strong> explicit');
+
+    const checkupHtmlResponse = createMockResponse();
+    checkupRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/checkup',
+      } as never,
+      checkupHtmlResponse as never,
+    );
+
+    expect(checkupHtmlResponse.statusCode).toBe(200);
+    expect(checkupHtmlResponse.body).toContain('Recent audit quick scan:');
+    expect(checkupHtmlResponse.body).toContain('Workspace result state:</strong> insert via created');
+    expect(checkupHtmlResponse.body).toContain(
+      'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+    );
+    expect(checkupHtmlResponse.body).not.toContain('Outbound route mode:</strong> explicit');
+  });
+
   it('keeps the quick scan conservative when recent outbound route is unavailable', () => {
     const state = createClawGuardState();
     state.audit.record({

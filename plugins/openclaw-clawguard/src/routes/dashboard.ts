@@ -187,21 +187,33 @@ function renderAuditItem(entry: AuditEntry): string {
   </li>`;
 }
 
-function extractAuditDetail(entries: AuditEntry[], pattern: RegExp): string | undefined {
-  for (const entry of entries) {
-    const match = entry.detail.match(pattern);
-    if (match?.[1]) {
-      return trimTrailingPunctuation(match[1]);
-    }
+function findLatestAuditEntry(
+  entries: AuditEntry[],
+  predicate: (entry: AuditEntry) => boolean,
+): AuditEntry | undefined {
+  return entries.find(predicate);
+}
+
+function extractAuditDetail(entry: AuditEntry | undefined, pattern: RegExp): string | undefined {
+  if (!entry) {
+    return undefined;
   }
 
-  return undefined;
+  const match = entry.detail.match(pattern);
+  return match?.[1] ? trimTrailingPunctuation(match[1]) : undefined;
 }
 
 export function renderRecentAuditQuickScan(entries: AuditEntry[]): string {
-  const workspaceResultState = extractAuditDetail(entries, WORKSPACE_RESULT_STATE_PATTERN);
-  const outboundRouteMode = extractAuditDetail(entries, OUTBOUND_ROUTE_MODE_PATTERN);
-  const outboundRoute = extractAuditDetail(entries, OUTBOUND_ROUTE_PATTERN);
+  const latestWorkspaceEntry = findLatestAuditEntry(entries, (entry) =>
+    WORKSPACE_RESULT_STATE_PATTERN.test(entry.detail),
+  );
+  const latestOutboundEntry = findLatestAuditEntry(entries, (entry) =>
+    OUTBOUND_ROUTE_MODE_PATTERN.test(entry.detail) || OUTBOUND_ROUTE_PATTERN.test(entry.detail),
+  );
+
+  const workspaceResultState = extractAuditDetail(latestWorkspaceEntry, WORKSPACE_RESULT_STATE_PATTERN);
+  const outboundRouteMode = extractAuditDetail(latestOutboundEntry, OUTBOUND_ROUTE_MODE_PATTERN);
+  const outboundRoute = extractAuditDetail(latestOutboundEntry, OUTBOUND_ROUTE_PATTERN);
 
   const quickScanItems = [
     workspaceResultState
