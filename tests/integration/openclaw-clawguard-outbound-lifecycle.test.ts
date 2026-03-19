@@ -159,6 +159,9 @@ describe('OpenClaw ClawGuard outbound lifecycle', () => {
     expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
       'Final outbound outcome allowed after host delivery.',
     );
+    expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain(
+      'Outbound route=C123 via slack/default/C123.',
+    );
     expect(getLatestAuditByKind(state, 'allowed')?.detail).toContain('Route mode=explicit.');
   });
 
@@ -213,6 +216,9 @@ describe('OpenClaw ClawGuard outbound lifecycle', () => {
     });
     expect(getLatestAuditByKind(state, 'failed')?.detail).toContain(
       'Final outbound outcome failed after host delivery.',
+    );
+    expect(getLatestAuditByKind(state, 'failed')?.detail).toContain(
+      'Outbound route=C123 via slack/default/C123.',
     );
     expect(getLatestAuditByKind(state, 'failed')?.detail).toContain('Route mode=explicit.');
   });

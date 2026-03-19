@@ -606,10 +606,12 @@ function buildHostOutboundBlockDetail(artifacts: EvaluationArtifacts): string {
     artifacts.policy_decision.decision === ResponseAction.ApproveRequired
       ? 'Direct host outbound cannot enter the pending approval loop, so ClawGuard kept the host send on the hard-block path.'
       : 'Direct host outbound matched an immediate block rule.';
+  const destinationDetail = buildOutboundDestinationDetailFromEvaluationInput(artifacts.evaluation_input);
   const routeMode = artifacts.evaluation_input.destination?.target_mode;
 
   return [
     'Blocked host outbound delivery before channel send.',
+    destinationDetail,
     routeMode ? `Route mode=${routeMode}.` : undefined,
     deliveryPosture,
     artifacts.policy_decision.reason,
@@ -742,7 +744,7 @@ function summarizeWorkspaceResultState(
   deleted: string | undefined,
   renamed: string | undefined,
 ): { readonly state: string; readonly source?: 'operation_type' | 'created' | 'updated' | 'deleted' | 'renamed' } | undefined {
-  const normalizedOperationType = readOptionalString(operationType)?.toLowerCase();
+  const normalizedOperationType = normalizeWorkspaceResultStateLabel(operationType);
   if (normalizedOperationType) {
     return {
       state: normalizedOperationType,
@@ -788,6 +790,40 @@ function summarizeWorkspaceResultState(
   return undefined;
 }
 
+function normalizeWorkspaceResultStateLabel(operationType: string | undefined): string | undefined {
+  const normalized = readOptionalString(operationType)?.toLowerCase();
+  if (!normalized) {
+    return undefined;
+  }
+
+  switch (normalized) {
+    case 'add':
+    case 'create':
+    case 'created':
+    case 'insert':
+      return 'insert';
+    case 'delete':
+    case 'deleted':
+    case 'remove':
+    case 'removed':
+      return 'delete';
+    case 'edit':
+    case 'modify':
+    case 'modified':
+    case 'update':
+    case 'updated':
+      return 'modify';
+    case 'move':
+    case 'moved':
+    case 'rename':
+    case 'renamed':
+    case 'rename-like':
+      return 'rename-like';
+    default:
+      return normalized;
+  }
+}
+
 function isBlockedResult(result: unknown): boolean {
   if (!result || typeof result !== 'object') {
     return false;
@@ -823,10 +859,12 @@ function buildFinalOutcomeDetail(
   resultSummary?: string,
 ): string {
   const resolvedResultSummary = resultSummary ?? artifacts.evaluation_input.agent_event?.summary;
+  const destinationDetail = buildOutboundDestinationDetailFromEvaluationInput(artifacts.evaluation_input);
   const routeMode = artifacts.evaluation_input.destination?.target_mode;
 
   return [
     `Final outcome ${artifacts.audit_record.final_status} after execution.`,
+    destinationDetail,
     routeMode ? `Route mode=${routeMode}.` : undefined,
     artifacts.policy_decision.reason,
     artifacts.risk_event.summary,
@@ -840,10 +878,12 @@ function buildFinalOutcomeDetail(
 function buildHostOutboundFinalOutcomeDetail(
   artifacts: ReturnType<typeof applyPostExecutionResultToEvaluationArtifacts>,
 ): string {
+  const destinationDetail = buildOutboundDestinationDetailFromEvaluationInput(artifacts.evaluation_input);
   const routeMode = artifacts.evaluation_input.destination?.target_mode;
 
   return [
     `Final outbound outcome ${artifacts.audit_record.final_status} after host delivery.`,
+    destinationDetail,
     routeMode ? `Route mode=${routeMode}.` : undefined,
     artifacts.policy_decision.reason,
     artifacts.risk_event.summary,
@@ -1018,6 +1058,38 @@ function summarizeStructuredResultPathPairValue(value: unknown): string | undefi
   }
 
   return fromPath ?? toPath;
+}
+
+function buildOutboundDestinationDetailFromEvaluationInput(
+  evaluationInput: EvaluationArtifacts['evaluation_input'],
+): string | undefined {
+  const destination = evaluationInput.destination;
+  if (!destination) {
+    return undefined;
+  }
+
+  const routeParts = [destination.channel, destination.account, destination.conversation].filter(
+    (value): value is string => Boolean(value),
+  );
+  const threadPresentation = destination.thread ? ` (thread ${destination.thread})` : '';
+
+  if (destination.target && routeParts.length > 0) {
+    return `Outbound route=${destination.target} via ${routeParts.join('/')}${threadPresentation}.`;
+  }
+
+  if (destination.target) {
+    return `Outbound route=${destination.target}${threadPresentation}.`;
+  }
+
+  if (routeParts.length > 0) {
+    return `Outbound route=${routeParts.join('/')}${threadPresentation}.`;
+  }
+
+  if (destination.thread) {
+    return `Outbound route=thread ${destination.thread}.`;
+  }
+
+  return undefined;
 }
 
 function readOptionalStringFromKeys(

@@ -1356,7 +1356,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       'Blocked host outbound delivery before channel send.',
     );
     expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain(
-      'Outbound route=C123 via slack/default (thread 1111.2222).',
+      'Outbound route=C123 via slack/default/C123 (thread 1111.2222).',
     );
     expect(getLatestAuditByKind(state, 'blocked')?.detail).toContain('Route mode=explicit.');
     resultHandler(
