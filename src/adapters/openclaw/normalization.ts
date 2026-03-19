@@ -268,11 +268,95 @@ function resolveWorkspaceMutationOperationType(
     return detectEditPathReferenceRenameLikeOperationType(toolParams) ?? baseOperationType;
   }
 
-  if (normalizedToolName !== 'apply_patch' || baseOperationType !== 'modify' || !patchText) {
+  if (normalizedToolName !== 'apply_patch') {
     return baseOperationType;
   }
 
-  return detectApplyPatchSectionOperationType(patchText) ?? baseOperationType;
+  if (patchText) {
+    return (
+      detectApplyPatchMoveLikeOperationType(patchText) ??
+      (baseOperationType === WorkspaceMutationOperationType.Modify
+        ? detectApplyPatchSectionOperationType(patchText) ?? baseOperationType
+        : baseOperationType)
+    );
+  }
+
+  return baseOperationType;
+}
+
+function detectApplyPatchMoveLikeOperationType(
+  patchText: string,
+): WorkspaceMutationOperationType | undefined {
+  const addPaths: string[] = [];
+  const deletePaths: string[] = [];
+  let sawUpdateHeader = false;
+  let sawOtherMoveSignal = false;
+
+  for (const rawLine of patchText.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+
+    if (/^\*\*\* Update File:\s+.+$/u.test(line) || /^diff --git\s+/u.test(line)) {
+      sawUpdateHeader = true;
+      continue;
+    }
+
+    if (
+      /^\*\*\* Move to:\s+.+$/u.test(line) ||
+      /^(?:rename|copy) (?:from|to)\s+.+$/u.test(line) ||
+      /^similarity index\s+\d+%$/u.test(line) ||
+      /^old mode\s+\d+$/u.test(line) ||
+      /^new mode\s+\d+$/u.test(line)
+    ) {
+      sawOtherMoveSignal = true;
+    }
+
+    const addMatch = line.match(/^\*\*\* Add File:\s+(.+)$/u);
+    if (addMatch) {
+      const path = normalizePatchPath(addMatch[1]);
+      if (path) {
+        addPaths.push(path);
+      }
+      continue;
+    }
+
+    const deleteMatch = line.match(/^\*\*\* Delete File:\s+(.+)$/u);
+    if (deleteMatch) {
+      const path = normalizePatchPath(deleteMatch[1]);
+      if (path) {
+        deletePaths.push(path);
+      }
+    }
+  }
+
+  if (addPaths.length !== 1 || deletePaths.length !== 1) {
+    return undefined;
+  }
+
+  if (sawUpdateHeader || sawOtherMoveSignal) {
+    return undefined;
+  }
+
+  return isHighConfidenceApplyPatchRenameLikeMove(deletePaths[0], addPaths[0])
+    ? WorkspaceMutationOperationType.RenameLike
+    : undefined;
+}
+
+function isHighConfidenceApplyPatchRenameLikeMove(fromPath: string, toPath: string): boolean {
+  const fromParsedPath = path.win32.parse(fromPath);
+  const toParsedPath = path.win32.parse(toPath);
+
+  if (!fromParsedPath.base || !toParsedPath.base) {
+    return false;
+  }
+
+  if (fromParsedPath.base.toLowerCase() !== toParsedPath.base.toLowerCase()) {
+    return false;
+  }
+
+  const fromDirectory = fromParsedPath.dir.trim().toLowerCase();
+  const toDirectory = toParsedPath.dir.trim().toLowerCase();
+
+  return fromDirectory !== toDirectory;
 }
 
 function detectApplyPatchSectionOperationType(

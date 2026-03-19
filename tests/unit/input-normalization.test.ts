@@ -189,6 +189,22 @@ describe('Sprint 0 input normalization', () => {
     });
   });
 
+  it('classifies add/delete apply_patch moves as rename-like when the filename stays the same across directories', () => {
+    const normalized = normalizeOpenClawInputs(
+      buildApplyPatchArgs({
+        patch:
+          '*** Begin Patch\n*** Add File: src\\guards\\approval-policy.ts\n+export const approvalPolicy = true;\n*** Delete File: src\\templates\\approval-policy.ts\n*** End Patch\n',
+      }),
+    );
+
+    expect(normalized.evaluation_input.workspace_context).toEqual({
+      paths: ['src\\guards\\approval-policy.ts', 'src\\templates\\approval-policy.ts'],
+      summary:
+        '*** Begin Patch\n*** Add File: src\\guards\\approval-policy.ts\n+export const approvalPolicy = true;\n*** Delete File: src\\templates\\approval-policy.ts\n*** End Patch',
+      operation_type: 'rename-like',
+    });
+  });
+
   it('normalizes edit mutations into workspace context and text candidates', () => {
     const normalized = normalizeOpenClawInputs(workspaceEditMutationFixture.args);
 

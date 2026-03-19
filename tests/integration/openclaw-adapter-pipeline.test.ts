@@ -407,6 +407,40 @@ describe('OpenClaw adapter pipeline', () => {
     expect(result.risk_event.explanation).toContain('Workspace operation type=add.');
   });
 
+  it('surfaces add/delete apply_patch moves as rename-like semantics in approval and audit artifacts', () => {
+    const result = buildOpenClawEvaluationArtifacts({
+      clock: fixedClock,
+      before_tool_call: {
+        event: {
+          toolName: 'apply_patch',
+          params: {
+            patch:
+              '*** Begin Patch\n*** Add File: src\\templates\\.env\n+API_KEY=prod_live_secret_value_123456789\n*** Delete File: .env\n*** End Patch\n',
+          },
+          runId: 'run-patch-move-1',
+          toolCallId: 'tool-patch-move-1',
+        },
+      },
+      session_policy: {
+        sessionKey: 'session-patch-move',
+      },
+    });
+
+    expect(result.evaluation_input.workspace_context).toEqual({
+      paths: ['src\\templates\\.env', '.env'],
+      summary:
+        '*** Begin Patch\n*** Add File: src\\templates\\.env\n+API_KEY=prod_live_secret_value_123456789\n*** Delete File: .env\n*** End Patch',
+      operation_type: 'rename-like',
+    });
+    expect(result.policy_decision.decision).toBe(ResponseAction.ApproveRequired);
+    expect(result.approval_request).toMatchObject({
+      action_title: 'Approve workspace mutation (rename-like)',
+      impact_scope: 'src\\templates\\.env, .env',
+    });
+    expect(result.risk_event.summary).toContain('rename-like');
+    expect(result.risk_event.explanation).toContain('Workspace operation type=rename-like.');
+  });
+
   it('surfaces delete apply_patch semantics conservatively for mixed patch actions', () => {
     const result = buildOpenClawEvaluationArtifacts({
       clock: fixedClock,
