@@ -679,6 +679,13 @@ export function summarizeStructuredToolResult(result: unknown): string | undefin
   const updated = summarizeStructuredResultField(record, 'updated');
   const deleted = summarizeStructuredResultField(record, 'deleted');
   const renamed = summarizeStructuredResultField(record, 'renamed');
+  const workspaceResultState = summarizeWorkspaceResultState(
+    operationType,
+    created,
+    updated,
+    deleted,
+    renamed,
+  );
   const paths = [
     readOptionalString(record.path),
     readOptionalString(record.filePath),
@@ -691,6 +698,7 @@ export function summarizeStructuredToolResult(result: unknown): string | undefin
       summary,
       operationType ? `operation type=${operationType}` : undefined,
       status ? `tool result status=${status}` : undefined,
+      workspaceResultState ? `workspace result state=${workspaceResultState}` : undefined,
       created,
       updated,
       deleted,
@@ -708,6 +716,7 @@ export function summarizeStructuredToolResult(result: unknown): string | undefin
   const segments = [
     operationType ? `operation type=${operationType}` : undefined,
     status ? `tool result status=${status}` : undefined,
+    workspaceResultState ? `workspace result state=${workspaceResultState}` : undefined,
     created,
     updated,
     deleted,
@@ -716,6 +725,44 @@ export function summarizeStructuredToolResult(result: unknown): string | undefin
   ].filter((value): value is string => Boolean(value));
 
   return segments.length > 0 ? segments.join('; ') : undefined;
+}
+
+function summarizeWorkspaceResultState(
+  operationType: string | undefined,
+  created: string | undefined,
+  updated: string | undefined,
+  deleted: string | undefined,
+  renamed: string | undefined,
+): string | undefined {
+  const normalizedOperationType = readOptionalString(operationType)?.toLowerCase();
+  if (normalizedOperationType) {
+    return normalizedOperationType;
+  }
+
+  const definedFieldKinds = [created, updated, deleted, renamed].filter(
+    (value): value is string => Boolean(value),
+  );
+  if (definedFieldKinds.length !== 1) {
+    return undefined;
+  }
+
+  if (created) {
+    return 'insert';
+  }
+
+  if (updated) {
+    return 'modify';
+  }
+
+  if (deleted) {
+    return 'delete';
+  }
+
+  if (renamed) {
+    return 'rename-like';
+  }
+
+  return undefined;
 }
 
 function isBlockedResult(result: unknown): boolean {
