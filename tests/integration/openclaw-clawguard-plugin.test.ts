@@ -1738,6 +1738,30 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(auditHtmlResponse.body).toContain(
       'Latest outbound route in recent replay:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
     );
+
+    const auditJsonResponse = createMockResponse();
+    auditRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/audit?format=json',
+      } as never,
+      auditJsonResponse as never,
+    );
+
+    expect(auditJsonResponse.statusCode).toBe(200);
+    expect(auditJsonResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    const auditPayload = JSON.parse(auditJsonResponse.body) as {
+      timeline: {
+        latest?: {
+          latestOutboundRoute?: string;
+          latestWorkspaceResultState?: string;
+        };
+      };
+    };
+    expect(auditPayload.timeline.latest).toEqual({
+      latestOutboundRoute: 'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+      latestWorkspaceResultState: 'insert',
+    });
   });
 
   it('keeps quick-scan fields anchored to the latest relevant audit entry per lane', () => {

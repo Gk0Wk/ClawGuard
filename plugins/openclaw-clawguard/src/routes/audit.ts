@@ -97,6 +97,10 @@ type AuditTimelinePayload = {
     };
     readonly kindGuide: ReadonlyArray<{ readonly kind: AuditEntryKind } & AuditKindGuide>;
     readonly flows: TimelineFlow[];
+    readonly latest?: {
+      readonly latestOutboundRoute?: string;
+      readonly latestWorkspaceResultState?: string;
+    };
   };
 };
 
@@ -241,6 +245,8 @@ const AUDIT_KIND_GUIDE: Record<AuditEntryKind, AuditKindGuide> = {
 function buildAuditPayload(state: ClawGuardState): AuditTimelinePayload {
   const audit = state.audit.list();
   const flows = buildTimelineFlows(audit);
+  const latestOutboundRoute = findLatestOutboundRoute(flows);
+  const latestWorkspaceResultState = findLatestWorkspaceResultState(flows);
   const flowOutcomes = flows.reduce(
     (summary, flow) => {
       if (flow.origin === 'Approvals queue') {
@@ -306,6 +312,14 @@ function buildAuditPayload(state: ClawGuardState): AuditTimelinePayload {
           ...guide,
         }),
       ),
+      ...(latestOutboundRoute || latestWorkspaceResultState
+        ? {
+            latest: {
+              ...(latestOutboundRoute ? { latestOutboundRoute } : {}),
+              ...(latestWorkspaceResultState ? { latestWorkspaceResultState } : {}),
+            },
+          }
+        : {}),
       flows,
     },
   };
