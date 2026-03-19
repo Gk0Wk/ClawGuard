@@ -1703,6 +1703,32 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       'Outbound route:</strong> https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
     );
 
+    const dashboardJsonResponse = createMockResponse();
+    dashboardRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/dashboard?format=json',
+      } as never,
+      dashboardJsonResponse as never,
+    );
+
+    expect(dashboardJsonResponse.statusCode).toBe(200);
+    expect(dashboardJsonResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    const dashboardPayload = JSON.parse(dashboardJsonResponse.body) as {
+      recentAudit: {
+        quickScan: {
+          workspaceResultState?: string;
+          outboundRouteMode?: string;
+          outboundRoute?: string;
+        };
+      };
+    };
+    expect(dashboardPayload.recentAudit.quickScan).toEqual({
+      workspaceResultState: 'insert via created',
+      outboundRouteMode: 'explicit',
+      outboundRoute: 'https://hooks.slack.com/services/T00000000/B00000000/very-secret-token',
+    });
+
     const checkupHtmlResponse = createMockResponse();
     checkupRoute(
       {
@@ -1849,6 +1875,32 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(dashboardHtmlResponse.body).toContain('Workspace result state:</strong> modify via updated');
     expect(dashboardHtmlResponse.body).toContain('Outbound route mode:</strong> implicit');
     expect(dashboardHtmlResponse.body).not.toContain('Outbound route:</strong>');
+
+    const dashboardJsonResponse = createMockResponse();
+    dashboardRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/dashboard?format=json',
+      } as never,
+      dashboardJsonResponse as never,
+    );
+
+    expect(dashboardJsonResponse.statusCode).toBe(200);
+    expect(dashboardJsonResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    const dashboardPayload = JSON.parse(dashboardJsonResponse.body) as {
+      recentAudit: {
+        quickScan: {
+          workspaceResultState?: string;
+          outboundRouteMode?: string;
+          outboundRoute?: string;
+        };
+      };
+    };
+    expect(dashboardPayload.recentAudit.quickScan).toEqual({
+      workspaceResultState: 'modify via updated',
+      outboundRouteMode: 'implicit',
+    });
+    expect(dashboardPayload.recentAudit.quickScan).not.toHaveProperty('outboundRoute');
 
     const checkupHtmlResponse = createMockResponse();
     checkupRoute(

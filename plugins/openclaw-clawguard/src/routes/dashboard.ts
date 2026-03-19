@@ -41,6 +41,11 @@ const CHECKUP_STATUS_ORDER = {
 const WORKSPACE_RESULT_STATE_PATTERN = /workspace result state=([^;]+?)(?:;|$)/i;
 const OUTBOUND_ROUTE_MODE_PATTERN = /Route mode=([^.;]+?)(?=\.|$)/i;
 const OUTBOUND_ROUTE_PATTERN = /Outbound route=([\s\S]*?)(?=\. [A-Z]|\. $|$)/i;
+type RecentAuditQuickScan = {
+  workspaceResultState?: string;
+  outboundRouteMode?: 'explicit' | 'implicit';
+  outboundRoute?: string;
+};
 
 function trimTrailingPunctuation(value: string): string {
   return value.trim().replace(/[.;,]+$/u, '');
@@ -203,7 +208,7 @@ function extractAuditDetail(entry: AuditEntry | undefined, pattern: RegExp): str
   return match?.[1] ? trimTrailingPunctuation(match[1]) : undefined;
 }
 
-export function renderRecentAuditQuickScan(entries: AuditEntry[]): string {
+function buildRecentAuditQuickScan(entries: AuditEntry[]): RecentAuditQuickScan {
   const latestWorkspaceEntry = findLatestAuditEntry(entries, (entry) =>
     WORKSPACE_RESULT_STATE_PATTERN.test(entry.detail),
   );
@@ -211,19 +216,38 @@ export function renderRecentAuditQuickScan(entries: AuditEntry[]): string {
     OUTBOUND_ROUTE_MODE_PATTERN.test(entry.detail) || OUTBOUND_ROUTE_PATTERN.test(entry.detail),
   );
 
+  const quickScan: RecentAuditQuickScan = {};
   const workspaceResultState = extractAuditDetail(latestWorkspaceEntry, WORKSPACE_RESULT_STATE_PATTERN);
   const outboundRouteMode = extractAuditDetail(latestOutboundEntry, OUTBOUND_ROUTE_MODE_PATTERN);
   const outboundRoute = extractAuditDetail(latestOutboundEntry, OUTBOUND_ROUTE_PATTERN);
 
+  if (workspaceResultState) {
+    quickScan.workspaceResultState = workspaceResultState;
+  }
+
+  if (outboundRouteMode === 'explicit' || outboundRouteMode === 'implicit') {
+    quickScan.outboundRouteMode = outboundRouteMode;
+  }
+
+  if (outboundRoute) {
+    quickScan.outboundRoute = outboundRoute;
+  }
+
+  return quickScan;
+}
+
+export function renderRecentAuditQuickScan(entries: AuditEntry[]): string {
+  const quickScan = buildRecentAuditQuickScan(entries);
+
   const quickScanItems = [
-    workspaceResultState
-      ? `<li><strong>Workspace result state:</strong> ${escapeHtml(workspaceResultState)}</li>`
+    quickScan.workspaceResultState
+      ? `<li><strong>Workspace result state:</strong> ${escapeHtml(quickScan.workspaceResultState)}</li>`
       : undefined,
-    outboundRouteMode
-      ? `<li><strong>Outbound route mode:</strong> ${escapeHtml(outboundRouteMode)}</li>`
+    quickScan.outboundRouteMode
+      ? `<li><strong>Outbound route mode:</strong> ${escapeHtml(quickScan.outboundRouteMode)}</li>`
       : undefined,
-    outboundRoute
-      ? `<li><strong>Outbound route:</strong> ${escapeHtml(outboundRoute)}</li>`
+    quickScan.outboundRoute
+      ? `<li><strong>Outbound route:</strong> ${escapeHtml(quickScan.outboundRoute)}</li>`
       : undefined,
   ].filter((item): item is string => typeof item === 'string');
 
@@ -245,6 +269,7 @@ export function createDashboardPayload(state: ClawGuardState) {
     (entry) => entry.status === 'approved_waiting_retry',
   );
   const recentAuditItems = recentAudit.slice(0, RECENT_AUDIT_LIMIT);
+  const recentAuditQuickScan = buildRecentAuditQuickScan(recentAuditItems);
   const recentRiskSignals = countAuditKinds(recentAuditItems, RECENT_RISK_SIGNAL_KINDS);
   const recentErrors = countAuditKinds(recentAuditItems, RECENT_ERROR_KINDS);
   const controlSurfaceDomainBreakdown = {
@@ -491,6 +516,7 @@ export function createDashboardPayload(state: ClawGuardState) {
       total: recentAudit.length,
       byKind: summarizeAudit(recentAuditItems),
       items: recentAuditItems,
+      quickScan: recentAuditQuickScan,
     },
     settingsSummary: {
       approvalTtlSeconds: state.config.approvalTtlSeconds,
