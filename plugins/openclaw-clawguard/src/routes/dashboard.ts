@@ -18,6 +18,7 @@ import {
   renderLifecycleHandoffCopy,
   renderOperatorActionLink,
   summarizeControlSurfaceDomains,
+  summarizeControlSurfaceLanePressure,
   INSTALL_DEMO,
 } from './shared.js';
 
@@ -379,6 +380,12 @@ export function createDashboardPayload(state: ClawGuardState) {
 
 function renderDashboardPage(state: ClawGuardState): string {
   const payload = createDashboardPayload(state);
+  const approvalsLanePressure = summarizeControlSurfaceLanePressure(
+    payload.controlSurface.domainBreakdown.approvals,
+  );
+  const recentAuditLanePressure = summarizeControlSurfaceLanePressure(
+    payload.controlSurface.domainBreakdown.recentAudit,
+  );
   const pendingItems = payload.pendingApprovals.items.map(renderPendingItem).join('\n');
   const auditItems = payload.recentAudit.items.map(renderAuditItem).join('\n');
   const auditSummary = Object.entries(payload.recentAudit.byKind)
@@ -411,6 +418,7 @@ function renderDashboardPage(state: ClawGuardState): string {
       <p><strong>Main drag right now:</strong> ${escapeHtml(payload.checkup.mainDrag.label)} — ${escapeHtml(payload.checkup.mainDrag.explanation)}</p>
       <p><small>Mapped action: ${renderOperatorActionLink(payload.checkup.mainDrag.recommendedAction, payload.checkup.mainDrag.recommendedAction.label)} · Action ID: <code>${escapeHtml(payload.checkup.mainDrag.recommendedAction.actionId)}</code> · Opens ${escapeHtml(payload.checkup.mainDrag.recommendedAction.surface.label)}</small></p>
       <p><strong>Fix first:</strong> ${renderOperatorActionLink(payload.checkup.firstFix, payload.checkup.firstFix.title)} — ${escapeHtml(payload.checkup.firstFix.why)}</p>
+      <p><small>That first fix stays aligned with the same approvals-queue lane pressure.</small></p>
       <ul>
         ${payload.safetyStatus.checks
           .map(
@@ -433,9 +441,13 @@ function renderDashboardPage(state: ClawGuardState): string {
     <section>
       <h2>Live posture by domain</h2>
       <p>This keeps the active lane mix visible without changing the underlying hooks or state model.</p>
+      <p><strong>Main drag lane:</strong> ${approvalsLanePressure.leadLabel ? `${escapeHtml(approvalsLanePressure.leadLabel)} is the heaviest lane in the approvals queue (${approvalsLanePressure.leadCount} live signal${approvalsLanePressure.leadCount === 1 ? '' : 's'} among ${approvalsLanePressure.namedTotal} named signal${approvalsLanePressure.namedTotal === 1 ? '' : 's'}).` : 'No named lane is leading the approvals queue right now.'}</p>
+      <p><small>Split: ${escapeHtml(approvalsLanePressure.mix)}</small></p>
       <h3>Approvals queue</h3>
       ${renderControlSurfaceDomainBreakdown(payload.controlSurface.domainBreakdown.approvals)}
       <h3>Recent audit trail</h3>
+      <p><strong>Recent audit lane pressure:</strong> ${recentAuditLanePressure.leadLabel ? `${escapeHtml(recentAuditLanePressure.leadLabel)} is the heaviest lane in the recent audit trail (${recentAuditLanePressure.leadCount} live signal${recentAuditLanePressure.leadCount === 1 ? '' : 's'} among ${recentAuditLanePressure.namedTotal} named signal${recentAuditLanePressure.namedTotal === 1 ? '' : 's'}).` : 'No named lane is leading the recent audit trail right now.'}</p>
+      <p><small>Split: ${escapeHtml(recentAuditLanePressure.mix)}</small></p>
       ${renderControlSurfaceDomainBreakdown(payload.controlSurface.domainBreakdown.recentAudit)}
     </section>
     <section>
@@ -453,6 +465,7 @@ function renderDashboardPage(state: ClawGuardState): string {
       <h2>Checkup details</h2>
       <p>These posture items are read-only summaries built from the current approvals queue, recent audit trail, and install-demo metadata.</p>
       <p>${renderLifecycleHandoffCopy('dashboard')}</p>
+      <p><small>The same lane pressure above is what keeps the current main drag and first fix aligned.</small></p>
       <ul>
         ${checkupItems}
       </ul>

@@ -13,6 +13,7 @@ import {
   renderInstallDemoPostureNote,
   renderLifecycleHandoffCopy,
   renderOperatorActionLink,
+  summarizeControlSurfaceLanePressure,
 } from './shared.js';
 
 function renderEvidenceValue(value: unknown): string {
@@ -43,6 +44,12 @@ function renderEvidence(evidence: Record<string, unknown>): string {
 
 function renderCheckupPage(state: ClawGuardState): string {
   const payload = createDashboardPayload(state);
+  const approvalsLanePressure = summarizeControlSurfaceLanePressure(
+    payload.controlSurface.domainBreakdown.approvals,
+  );
+  const recentAuditLanePressure = summarizeControlSurfaceLanePressure(
+    payload.controlSurface.domainBreakdown.recentAudit,
+  );
   const checkupItems = payload.checkup.items
     .map(
       (item) => `
@@ -99,17 +106,23 @@ function renderCheckupPage(state: ClawGuardState): string {
     <section>
       <h2>Live posture by domain</h2>
       <p>This is the live split of the same posture signals used to produce the current dashboard summary.</p>
+      <p><strong>Main drag lane:</strong> ${approvalsLanePressure.leadLabel ? `${escapeHtml(approvalsLanePressure.leadLabel)} is the heaviest lane in the approvals queue (${approvalsLanePressure.leadCount} live signal${approvalsLanePressure.leadCount === 1 ? '' : 's'} among ${approvalsLanePressure.namedTotal} named signal${approvalsLanePressure.namedTotal === 1 ? '' : 's'}).` : 'No named lane is leading the approvals queue right now.'}</p>
+      <p><small>Split: ${escapeHtml(approvalsLanePressure.mix)}</small></p>
       <h3>Approvals queue</h3>
       ${renderControlSurfaceDomainBreakdown(payload.controlSurface.domainBreakdown.approvals)}
       <h3>Recent audit trail</h3>
+      <p><strong>Recent audit lane pressure:</strong> ${recentAuditLanePressure.leadLabel ? `${escapeHtml(recentAuditLanePressure.leadLabel)} is the heaviest lane in the recent audit trail (${recentAuditLanePressure.leadCount} live signal${recentAuditLanePressure.leadCount === 1 ? '' : 's'} among ${recentAuditLanePressure.namedTotal} named signal${recentAuditLanePressure.namedTotal === 1 ? '' : 's'}).` : 'No named lane is leading the recent audit trail right now.'}</p>
+      <p><small>Split: ${escapeHtml(recentAuditLanePressure.mix)}</small></p>
       ${renderControlSurfaceDomainBreakdown(payload.controlSurface.domainBreakdown.recentAudit)}
     </section>
     <section>
       <h2>Main drag and fix first</h2>
       <p><strong>Main drag:</strong> ${escapeHtml(payload.checkup.mainDrag.label)} — ${escapeHtml(payload.checkup.mainDrag.explanation)}</p>
       <p><small>Mapped action: ${renderOperatorActionLink(payload.checkup.mainDrag.recommendedAction, payload.checkup.mainDrag.recommendedAction.label)} · Action ID: <code>${escapeHtml(payload.checkup.mainDrag.recommendedAction.actionId)}</code> · Opens ${escapeHtml(payload.checkup.mainDrag.recommendedAction.surface.label)} · Intent: ${escapeHtml(payload.checkup.mainDrag.recommendedAction.intent)}</small></p>
+      <p><small>Lane pressure: ${approvalsLanePressure.leadLabel ? `${escapeHtml(approvalsLanePressure.leadLabel)} is still the lane behind the current main drag.` : 'No named lane currently dominates the approvals queue.'}</small></p>
       <p><strong>Fix first:</strong> ${renderOperatorActionLink(payload.checkup.firstFix, payload.checkup.firstFix.title)} — ${escapeHtml(payload.checkup.firstFix.why)}</p>
       <p><small>Action ID: <code>${escapeHtml(payload.checkup.firstFix.actionId)}</code> · Opens ${escapeHtml(payload.checkup.firstFix.surface.label)} · Linked item: <code>${escapeHtml(payload.checkup.firstFix.checkupItemId)}</code> · Intent: ${escapeHtml(payload.checkup.firstFix.intent)}</small></p>
+      <p><small>That first fix stays aligned with the same approvals-queue lane pressure.</small></p>
       <p><small>${escapeHtml(INSTALL_DEMO.limitations)}</small></p>
     </section>
     <section>

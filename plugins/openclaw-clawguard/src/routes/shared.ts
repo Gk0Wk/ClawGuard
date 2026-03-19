@@ -66,6 +66,13 @@ export interface ControlSurfaceDomainBreakdown {
   readonly other: number;
 }
 
+export interface ControlSurfaceLanePressure {
+  readonly leadLabel: string | null;
+  readonly leadCount: number;
+  readonly namedTotal: number;
+  readonly mix: string;
+}
+
 export type ControlSurfaceHandoffMode = 'dashboard' | 'checkup';
 
 export const INSTALL_DEMO = {
@@ -298,6 +305,24 @@ export function renderControlSurfaceDomainBreakdown(
 </ul>`;
 }
 
+export function summarizeControlSurfaceLanePressure(
+  counts: ControlSurfaceDomainBreakdown,
+): ControlSurfaceLanePressure {
+  const namedTotal = counts.exec + counts.outbound + counts.workspace;
+  const lead = getDominantNamedControlSurfaceDomain(counts);
+  const leadCount = counts[lead];
+  const leadLabel = namedTotal > 0 ? CONTROL_SURFACE_DOMAIN_LABELS[lead] : null;
+
+  return {
+    leadLabel,
+    leadCount,
+    namedTotal,
+    mix: `Exec ${counts.exec} · Outbound ${counts.outbound} · Workspace ${counts.workspace}${
+      counts.other > 0 ? ` · Other ${counts.other}` : ''
+    }`,
+  };
+}
+
 export function renderApprovalsQueueBoundaryCopy(): string {
   return APPROVALS_QUEUE_BOUNDARY_COPY;
 }
@@ -390,4 +415,24 @@ function classifyControlSurfaceDomain(toolName: string | undefined): ControlSurf
     default:
       return 'other';
   }
+}
+
+const CONTROL_SURFACE_DOMAIN_LABELS: Record<Exclude<ControlSurfaceDomain, 'other'>, string> = {
+  exec: 'Exec',
+  outbound: 'Outbound',
+  workspace: 'Workspace',
+};
+
+const CONTROL_SURFACE_DOMAIN_PRIORITY: readonly Exclude<ControlSurfaceDomain, 'other'>[] = [
+  'exec',
+  'outbound',
+  'workspace',
+];
+
+function getDominantNamedControlSurfaceDomain(
+  counts: ControlSurfaceDomainBreakdown,
+): Exclude<ControlSurfaceDomain, 'other'> {
+  return CONTROL_SURFACE_DOMAIN_PRIORITY.reduce((winner, candidate) =>
+    counts[candidate] > counts[winner] ? candidate : winner,
+  'exec');
 }

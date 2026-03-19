@@ -1862,7 +1862,10 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(dashboardHtmlResponse.body).toContain('<strong>Urgent</strong>');
     expect(dashboardHtmlResponse.body).toContain('<strong>1/4</strong> lightweight dashboard checks are passing.');
     expect(dashboardHtmlResponse.body).toContain('Main drag right now:');
+    expect(dashboardHtmlResponse.body).toContain('Main drag lane:');
+    expect(dashboardHtmlResponse.body).toContain('Exec is the heaviest lane in the approvals queue');
     expect(dashboardHtmlResponse.body).toContain('Fix first:');
+    expect(dashboardHtmlResponse.body).toContain('That first fix stays aligned with the same approvals-queue lane pressure.');
     expect(dashboardHtmlResponse.body).toContain('Top attention items right now');
     expect(dashboardHtmlResponse.body).toContain('Approval queue needs a decision');
     expect(dashboardHtmlResponse.body).toContain('Checkup details');
@@ -2311,10 +2314,14 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(checkupHtmlResponse.body).toContain(
       'This is the live split of the same posture signals used to produce the current dashboard summary.',
     );
+    expect(checkupHtmlResponse.body).toContain('Main drag lane:');
+    expect(checkupHtmlResponse.body).toContain('Exec is the heaviest lane in the approvals queue');
     expect(checkupHtmlResponse.body).toContain('Exec</strong>: 1');
     expect(checkupHtmlResponse.body).toContain('Outbound</strong>: 0');
     expect(checkupHtmlResponse.body).toContain('Workspace</strong>: 0');
     expect(checkupHtmlResponse.body).toContain('Main drag and fix first');
+    expect(checkupHtmlResponse.body).toContain('Lane pressure: Exec is still the lane behind the current main drag.');
+    expect(checkupHtmlResponse.body).toContain('That first fix stays aligned with the same approvals-queue lane pressure.');
     expect(checkupHtmlResponse.body).toContain('All checkup items');
     expect(checkupHtmlResponse.body).toContain('Evidence available right now');
     expect(checkupHtmlResponse.body).toContain('Quick follow-up actions');
