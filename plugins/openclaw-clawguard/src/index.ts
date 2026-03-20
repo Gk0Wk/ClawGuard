@@ -10,6 +10,7 @@ import { createApprovalsRoute } from './routes/approvals.js';
 import { createAuditRoute } from './routes/audit.js';
 import { createCheckupRoute } from './routes/checkup.js';
 import { createDashboardRoute } from './routes/dashboard.js';
+import { createPublicShellRoute, PUBLIC_SHELL_ROUTE_BASE_PATH } from './routes/public-shell.js';
 import { createSettingsRoute } from './routes/settings.js';
 import {
   APPROVALS_ROUTE_PATH,
@@ -68,6 +69,12 @@ const plugin = {
     // message/sessions_send keeps approval ownership on before/after_tool_call.
     api.on('message_sending', createMessageSendingHandler(state));
     api.on('message_sent', createMessageSentHandler(state));
+    api.registerHttpRoute({
+      path: PUBLIC_SHELL_ROUTE_BASE_PATH,
+      auth: 'plugin',
+      match: 'prefix',
+      handler: createPublicShellRoute(),
+    });
     api.registerHttpRoute({
       path: DASHBOARD_ROUTE_PATH,
       auth: 'gateway',

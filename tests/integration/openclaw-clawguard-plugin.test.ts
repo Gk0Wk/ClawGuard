@@ -17,6 +17,10 @@ import { createApprovalsRoute } from '../../plugins/openclaw-clawguard/src/route
 import { createAuditRoute } from '../../plugins/openclaw-clawguard/src/routes/audit.js';
 import { createCheckupRoute } from '../../plugins/openclaw-clawguard/src/routes/checkup.js';
 import { createDashboardRoute } from '../../plugins/openclaw-clawguard/src/routes/dashboard.js';
+import {
+  createPublicShellRoute,
+  PUBLIC_SHELL_ROUTE_BASE_PATH,
+} from '../../plugins/openclaw-clawguard/src/routes/public-shell.js';
 import { createSettingsRoute } from '../../plugins/openclaw-clawguard/src/routes/settings.js';
 import { createClawGuardState } from '../../plugins/openclaw-clawguard/src/services/state.js';
 import type { Clock } from '../../plugins/openclaw-clawguard/src/types.js';
@@ -3090,6 +3094,61 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     });
   });
 
+  it('serves a public same-origin shell that can load protected ClawGuard pages without a userscript', () => {
+    const route = createPublicShellRoute();
+
+    const htmlResponse = createMockResponse();
+    route(
+      {
+        method: 'GET',
+        url: PUBLIC_SHELL_ROUTE_BASE_PATH,
+      } as never,
+      htmlResponse as never,
+    );
+
+    expect(htmlResponse.statusCode).toBe(200);
+    expect(htmlResponse.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(htmlResponse.body).toContain('Public same-origin entry shell');
+    expect(htmlResponse.body).toContain('openclaw.control.token.v1:');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/dashboard');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/checkup');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/approvals');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/audit');
+    expect(htmlResponse.body).toContain('/plugins/clawguard/settings');
+    expect(htmlResponse.body).toContain('does not require a userscript');
+    expect(htmlResponse.body).not.toContain('window.__clawGuardCompanion');
+  });
+
+  it('maps public same-origin deep links to the matching protected ClawGuard surfaces', () => {
+    const route = createPublicShellRoute();
+
+    const dashboardResponse = createMockResponse();
+    route(
+      {
+        method: 'GET',
+        url: '/clawguard/dashboard/',
+      } as never,
+      dashboardResponse as never,
+    );
+    expect(dashboardResponse.statusCode).toBe(200);
+    expect(dashboardResponse.body).toContain('"initialSurfaceId":"dashboard"');
+    expect(dashboardResponse.body).toContain('"publicPath":"/clawguard"');
+    expect(dashboardResponse.body).toContain('"protectedPath":"/plugins/clawguard/dashboard"');
+
+    const auditResponse = createMockResponse();
+    route(
+      {
+        method: 'GET',
+        url: '/clawguard/audit',
+      } as never,
+      auditResponse as never,
+    );
+    expect(auditResponse.statusCode).toBe(200);
+    expect(auditResponse.body).toContain('"initialSurfaceId":"audit"');
+    expect(auditResponse.body).toContain('"publicPath":"/clawguard/audit"');
+    expect(auditResponse.body).toContain('"protectedPath":"/plugins/clawguard/audit"');
+  });
+
   it('serves the dashboard-centered smoke path and exposes audit entries from the fake-only approval flow', () => {
     const state = createClawGuardState({ approvalTtlSeconds: 120 });
     const beforeHandler = createBeforeToolCallHandler(state);
@@ -4237,7 +4296,12 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     const settingsRoute = registry.httpRoutes.find(
       (entry) => entry.pluginId === 'clawguard' && entry.path === '/plugins/clawguard/settings',
     );
+    const publicShellRoute = registry.httpRoutes.find(
+      (entry) => entry.pluginId === 'clawguard' && entry.path === '/clawguard',
+    );
 
+    expect(publicShellRoute?.auth).toBe('plugin');
+    expect(publicShellRoute?.match).toBe('prefix');
     expect(dashboardRoute?.auth).toBe('gateway');
     expect(dashboardRoute?.match).toBe('prefix');
     expect(checkupRoute?.auth).toBe('gateway');

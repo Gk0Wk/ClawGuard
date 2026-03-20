@@ -128,7 +128,7 @@ declare module 'openclaw/plugin-sdk/core' {
 
   export interface OpenClawRouteDefinition {
     readonly path: string;
-    readonly auth: 'gateway';
+    readonly auth: 'gateway' | 'plugin';
     readonly match: 'exact' | 'prefix';
     readonly handler: OpenClawRouteHandler;
   }
