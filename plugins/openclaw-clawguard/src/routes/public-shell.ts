@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { ClawGuardState } from '../services/state.js';
 
 import {
   APPROVALS_ROUTE_PATH,
@@ -77,57 +76,11 @@ function resolvePublicSurface(pathname: string): PublicSurfaceDefinition | undef
   return candidates.sort((left, right) => right.path.length - left.path.length)[0]?.surface;
 }
 
-function resolveProtectedSurface(pathname: string): PublicSurfaceDefinition | undefined {
-  const normalized = normalizePublicShellPath(pathname).toLowerCase();
-  const candidates = PUBLIC_SURFACES.filter((surface) =>
-    isSurfacePathMatch(normalized, surface.protectedPath.toLowerCase()),
-  );
-  return candidates.sort((left, right) => right.protectedPath.length - left.protectedPath.length)[0];
-}
-
 function endJson(res: ServerResponse, statusCode: number, payload: unknown): true {
   res.statusCode = statusCode;
   res.setHeader('content-type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(payload, null, 2));
   return true;
-}
-
-function redirect(res: ServerResponse, location: string): true {
-  res.statusCode = 303;
-  res.setHeader('location', location);
-  res.end('');
-  return true;
-}
-
-function handlePublicApprovalsPost(
-  state: ClawGuardState,
-  pathname: string,
-  res: ServerResponse,
-): true {
-  const match = pathname.match(/^\/clawguard\/approvals\/([^/]+)\/(approve|deny)$/);
-  if (!match) {
-    return endJson(res, 404, { error: 'Approval action not found.' });
-  }
-
-  const [, pendingActionId, rawAction] = match;
-  const action: 'approve' | 'deny' = rawAction === 'approve' ? 'approve' : 'deny';
-  const updated =
-    action === 'approve'
-      ? state.approvePendingAction(pendingActionId)
-      : state.denyPendingAction(pendingActionId);
-
-  if (!updated.ok) {
-    if (updated.reason === 'invalid_transition') {
-      return endJson(res, 409, {
-        error: `Cannot ${action} pending action ${pendingActionId}.`,
-        currentState: updated.currentState,
-      });
-    }
-
-    return endJson(res, 404, { error: 'Pending action not found.' });
-  }
-
-  return redirect(res, `${PUBLIC_SHELL_ROUTE_BASE_PATH}/approvals`);
 }
 
 function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
@@ -597,7 +550,7 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
 </html>`;
 }
 
-export function createPublicShellRoute(state: ClawGuardState) {
+export function createPublicShellRoute() {
   return (req: IncomingMessage, res: ServerResponse): true | void => {
     const url = new URL(req.url ?? PUBLIC_SHELL_ROUTE_BASE_PATH, 'http://localhost');
     const surface = resolvePublicSurface(url.pathname);
@@ -606,9 +559,6 @@ export function createPublicShellRoute(state: ClawGuardState) {
     }
 
     if (req.method === 'POST') {
-      if (surface.id === 'approvals') {
-        return handlePublicApprovalsPost(state, url.pathname, res);
-      }
       return endJson(res, 405, { error: 'Method not allowed.' });
     }
 

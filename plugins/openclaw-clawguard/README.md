@@ -87,11 +87,10 @@ ClawGuard now exposes a plugin-owned public shell at `/clawguard`:
 
 The public shell reads the current tab token from the official tokenized dashboard flow and then loads the protected `/plugins/clawguard/*` pages behind the scenes. This keeps the plugin usable without patching OpenClaw core and without requiring a browser userscript.
 
-Within the shell, ClawGuard now rewrites protected page links and approval form actions back onto the `/clawguard*` surface. That means same-tab navigation stays on the public shell, and tokenized `/clawguard#token=...` entry URLs remain usable across the shell flow instead of collapsing back to raw `/plugins/clawguard/*` links.
+Within the shell, ClawGuard now rewrites protected page links and approval form actions back onto the `/clawguard*` surface. That keeps same-tab navigation on the public shell, while approval submits still proxy back to the protected approvals action using the current tab gateway token instead of exposing live approval mutations directly on the public route family.
 
 If you arrive at bare `/clawguard` from an already authenticated official dashboard tab, the shell now promotes the current tab gateway token into its own session-scoped shell token cache and continues to emit tokenized `/clawguard#token=...` links. This keeps copied links and new-tab shell links stable inside the same browser session without patching OpenClaw core.
 
-The public shell route itself now also accepts approval actions on `/clawguard/approvals/:pendingActionId/approve` and `/clawguard/approvals/:pendingActionId/deny`, so approval submits no longer depend on falling back to the protected `/plugins/clawguard/approvals/*` action paths.
 
 ### Legacy companion userscript
 
