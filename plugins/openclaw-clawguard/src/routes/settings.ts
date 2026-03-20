@@ -52,7 +52,8 @@ export function createSettingsRoute(state: ClawGuardState) {
     <p>Recommended install: use <code>${INSTALL_DEMO.recommendedCommand}</code> from the repo root.</p>
     <p>Optional single-artifact demo only: run <code>${INSTALL_DEMO.optionalPackedArtifactHint}</code> first, then install the generated local tarball manually. This does not imply any registry publish.</p>
     <p>After install, ${INSTALL_DEMO.reloadRequirement}</p>
-    <p>Smoke paths: <code>${INSTALL_DEMO.smokePaths.join('</code>, <code>')}</code></p>
+    <p>Browser smoke paths: <code>${INSTALL_DEMO.smokePaths.join('</code>, <code>')}</code></p>
+    <p>Protected backing routes: <code>${INSTALL_DEMO.protectedBackingRoutes.join('</code>, <code>')}</code></p>
     <p>Coverage: ${INSTALL_DEMO.coverage}</p>
     <p>Current limitation: ${INSTALL_DEMO.limitations}</p>
     <p>Operator notes: <code>${INSTALL_DEMO.readmePath}</code> and <code>${INSTALL_DEMO.docsPath}</code></p>

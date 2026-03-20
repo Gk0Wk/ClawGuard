@@ -586,7 +586,8 @@ function renderDashboardPage(state: ClawGuardState): string {
       <p>Approval TTL: ${payload.settingsSummary.approvalTtlSeconds} seconds</p>
       <p>Pending action limit: ${payload.settingsSummary.pendingActionLimit}</p>
       <p>Allow-once grant limit: ${payload.settingsSummary.allowOnceGrantLimit}</p>
-      <p>Smoke paths: <code>${INSTALL_DEMO.smokePaths.join('</code>, <code>')}</code></p>
+      <p>Browser smoke paths: <code>${INSTALL_DEMO.smokePaths.join('</code>, <code>')}</code></p>
+      <p>Protected backing routes: <code>${INSTALL_DEMO.protectedBackingRoutes.join('</code>, <code>')}</code></p>
       <p>Operator notes: <code>${INSTALL_DEMO.readmePath}</code> and <code>${INSTALL_DEMO.docsPath}</code></p>
     </section>
     <section>

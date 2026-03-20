@@ -7,6 +7,11 @@ export const CHECKUP_ROUTE_PATH = '/plugins/clawguard/checkup';
 export const APPROVALS_ROUTE_PATH = '/plugins/clawguard/approvals';
 export const AUDIT_ROUTE_PATH = '/plugins/clawguard/audit';
 export const SETTINGS_ROUTE_PATH = '/plugins/clawguard/settings';
+export const PUBLIC_DASHBOARD_ROUTE_PATH = '/clawguard';
+export const PUBLIC_CHECKUP_ROUTE_PATH = '/clawguard/checkup';
+export const PUBLIC_APPROVALS_ROUTE_PATH = '/clawguard/approvals';
+export const PUBLIC_AUDIT_ROUTE_PATH = '/clawguard/audit';
+export const PUBLIC_SETTINGS_ROUTE_PATH = '/clawguard/settings';
 
 export function normalizeClawGuardPagePath(pathname: string): string {
   if (pathname.length > 1) {
@@ -118,6 +123,13 @@ export const INSTALL_DEMO = {
   docsPath: 'docs/v1-installer-demo-strategy.md',
   reloadRequirement: 'Restart OpenClaw after install; hot reload is not assumed for the demo.',
   smokePaths: [
+    PUBLIC_DASHBOARD_ROUTE_PATH,
+    PUBLIC_CHECKUP_ROUTE_PATH,
+    PUBLIC_APPROVALS_ROUTE_PATH,
+    PUBLIC_AUDIT_ROUTE_PATH,
+    PUBLIC_SETTINGS_ROUTE_PATH,
+  ],
+  protectedBackingRoutes: [
     DASHBOARD_ROUTE_PATH,
     CHECKUP_ROUTE_PATH,
     APPROVALS_ROUTE_PATH,

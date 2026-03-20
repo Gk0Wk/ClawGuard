@@ -3082,6 +3082,13 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         optionalPackedArtifactHint: 'pnpm --dir plugins\\openclaw-clawguard pack',
         docsPath: 'docs/v1-installer-demo-strategy.md',
         smokePaths: [
+          '/clawguard',
+          '/clawguard/checkup',
+          '/clawguard/approvals',
+          '/clawguard/audit',
+          '/clawguard/settings',
+        ],
+        protectedBackingRoutes: [
           '/plugins/clawguard/dashboard',
           '/plugins/clawguard/checkup',
           '/plugins/clawguard/approvals',
@@ -3247,6 +3254,13 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       },
     ];
     const smokePathUrls = smokeRoutes.map((smokeRoute) => smokeRoute.url);
+    const publicSmokePathUrls = [
+      '/clawguard',
+      '/clawguard/checkup',
+      '/clawguard/approvals',
+      '/clawguard/audit',
+      '/clawguard/settings',
+    ];
     const smokeBodies = new Map<string, string>();
 
     for (const smokeRoute of smokeRoutes) {
@@ -3291,6 +3305,11 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     const settingsHtml = smokeBodies.get('/plugins/clawguard/settings');
     expect(settingsHtml).toContain('/plugins/clawguard/dashboard');
     expect(settingsHtml).toContain('Alpha overview');
+    expect(settingsHtml).toContain('Browser smoke paths:');
+    for (const smokePathUrl of publicSmokePathUrls) {
+      expect(settingsHtml).toContain(smokePathUrl);
+    }
+    expect(settingsHtml).toContain('Protected backing routes:');
     for (const smokePathUrl of smokePathUrls) {
       expect(settingsHtml).toContain(smokePathUrl);
     }
@@ -3312,10 +3331,12 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         demoPosture: string;
         navigationPosture: string;
         smokePaths: string[];
+        protectedBackingRoutes: string[];
       };
     };
     const settingsPayload = JSON.parse(settingsJsonResponse.body) as SettingsRoutePayload;
-    expect([...settingsPayload.installDemo.smokePaths].sort()).toEqual([...smokePathUrls].sort());
+    expect([...settingsPayload.installDemo.smokePaths].sort()).toEqual([...publicSmokePathUrls].sort());
+    expect([...settingsPayload.installDemo.protectedBackingRoutes].sort()).toEqual([...smokePathUrls].sort());
     expect(settingsPayload.installDemo.releaseStatus).toBe('Install demo only. Not a formal release.');
     expect(settingsPayload.installDemo.demoPosture).toContain('plugin-owned page');
     expect(settingsPayload.installDemo.navigationPosture).toContain('no stock Control UI Security tab');
@@ -3737,7 +3758,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       }),
     });
     for (const action of dashboardPayload.quickActions) {
-      expect(settingsPayload.installDemo.smokePaths).toContain(action.href);
+      expect(settingsPayload.installDemo.protectedBackingRoutes).toContain(action.href);
     }
     for (const item of dashboardPayload.checkup.items) {
       const action = quickActionsById.get(item.recommendedAction.actionId);
@@ -4035,7 +4056,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       },
     });
     for (const relationshipHref of Object.values(auditPayload.timeline.relationships)) {
-      expect(settingsPayload.installDemo.smokePaths).toContain(relationshipHref);
+      expect(settingsPayload.installDemo.protectedBackingRoutes).toContain(relationshipHref);
     }
   });
 
