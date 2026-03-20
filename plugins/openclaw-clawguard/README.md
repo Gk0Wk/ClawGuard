@@ -17,7 +17,7 @@ This install demo currently covers:
 - risky `exec`
 - minimal outbound coverage
 - minimal workspace mutation coverage for `write` / `edit` / `apply_patch` actions, with alpha-safe checks for key config files, repo automation metadata, obvious out-of-workspace writes, and a workspace-only `tool_result_persist` fallback for result closure; this is the current demo surface, not broad workspace coverage
-- a plugin-owned dashboard at `/plugins/clawguard/dashboard`, a deeper safety checkup at `/plugins/clawguard/checkup`, plus supporting `/plugins/clawguard/approvals`, `/plugins/clawguard/audit`, and `/plugins/clawguard/settings` pages
+- a plugin-owned dashboard and control surface whose browser-facing entry path is the `/clawguard*` public shell, backed by the protected `/plugins/clawguard/dashboard`, `/plugins/clawguard/checkup`, `/plugins/clawguard/approvals`, `/plugins/clawguard/audit`, and `/plugins/clawguard/settings` pages
 
 Current limitation:
 
@@ -87,6 +87,8 @@ ClawGuard now exposes a plugin-owned public shell at `/clawguard`:
 
 The public shell reads the current tab token from the official tokenized dashboard flow and then loads the protected `/plugins/clawguard/*` pages behind the scenes. This keeps the plugin usable without patching OpenClaw core and without requiring a browser userscript.
 
+Within the shell, ClawGuard now rewrites protected page links and approval form actions back onto the `/clawguard*` surface. That means same-tab navigation stays on the public shell, and tokenized `/clawguard#token=...` entry URLs remain usable across the shell flow instead of collapsing back to raw `/plugins/clawguard/*` links.
+
 ### Legacy companion userscript
 
 The companion userscript remains in the repo as a development fallback, but it is no longer the primary user entry path:
@@ -147,7 +149,7 @@ All public or local walkthroughs below should stay **fake-only**:
 Ask OpenClaw to run a clearly risky shell action. Expected result:
 
 - ClawGuard blocks or queues the action for approval
-- the dashboard highlights it and the approval appears on `/plugins/clawguard/approvals`
+- the dashboard highlights it and the approval appears on `/clawguard/approvals`
 - after approval, retry once to continue the demo path
 
 ### 2. Outbound risk
@@ -164,8 +166,8 @@ Ask OpenClaw to send a risky outbound message. Expected result:
 Ask OpenClaw to perform a risky file change such as a suspicious `write`, `edit`, or `apply_patch`. This shared `workspace mutation` action surface is fake-only. Current alpha heuristics especially call out `.env`, `.git/hooks`, `.github/workflows`, key config files, and obvious workspace-escape paths. Expected result:
 
 - ClawGuard creates a pending approval or block decision
-- the action can be reviewed from `/plugins/clawguard/dashboard` or `/plugins/clawguard/approvals`
-- the result is captured in `/plugins/clawguard/audit`
+- the action can be reviewed from `/clawguard` or `/clawguard/approvals`
+- the result is captured in `/clawguard/audit`
 
 ## Current limitations
 

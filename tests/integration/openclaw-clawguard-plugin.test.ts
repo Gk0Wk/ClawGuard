@@ -3116,6 +3116,12 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(htmlResponse.body).toContain('/plugins/clawguard/audit');
     expect(htmlResponse.body).toContain('/plugins/clawguard/settings');
     expect(htmlResponse.body).toContain('does not require a userscript');
+    expect(htmlResponse.body).toContain('clawguard.public-shell.gateway-token.v1');
+    expect(htmlResponse.body).toContain("contentEl.querySelectorAll('a[href]')");
+    expect(htmlResponse.body).toContain("contentEl.querySelectorAll('form[action]')");
+    expect(htmlResponse.body).toContain('event.button !== 0');
+    expect(htmlResponse.body).toContain("new FormData(form)");
+    expect(htmlResponse.body).toContain('searchParams.append');
     expect(htmlResponse.body).not.toContain('window.__clawGuardCompanion');
   });
 

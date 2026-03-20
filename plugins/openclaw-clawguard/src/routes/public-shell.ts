@@ -143,6 +143,7 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
         const contentEl = document.getElementById('shell-content');
         const settingsStorageKey = 'openclaw.control.settings.v1';
         const tokenSessionKeyPrefix = 'openclaw.control.token.v1:';
+        const shellTokenStorageKey = 'clawguard.public-shell.gateway-token.v1';
 
         function setStatus(message, isError = false) {
           if (!statusEl) return;
@@ -186,6 +187,43 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
           return token ? token.trim() : '';
         }
 
+        function cacheShellToken(token) {
+          if (!token) {
+            return '';
+          }
+
+          try {
+            sessionStorage.setItem(shellTokenStorageKey, token);
+          } catch {
+            return token;
+          }
+
+          return token;
+        }
+
+        function readCachedShellToken() {
+          try {
+            const token = sessionStorage.getItem(shellTokenStorageKey);
+            return token ? token.trim() : '';
+          } catch {
+            return '';
+          }
+        }
+
+        function readPreferredShellToken() {
+          const hashToken = readHashToken();
+          if (hashToken) {
+            return cacheShellToken(hashToken);
+          }
+
+          return readCachedShellToken();
+        }
+
+        function readPreferredShellHash() {
+          const token = readPreferredShellToken();
+          return token ? '#token=' + encodeURIComponent(token) : '';
+        }
+
         function readSessionToken() {
           const preferredGatewayUrl = readSettingsGatewayUrl();
           if (preferredGatewayUrl) {
@@ -207,7 +245,12 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
             }
           }
 
-          return readHashToken();
+          const preferredShellToken = readPreferredShellToken();
+          if (preferredShellToken) {
+            return preferredShellToken;
+          }
+
+          return '';
         }
 
         function resolveSurfaceByPublicPath(pathname) {
@@ -226,7 +269,17 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
           return boot.surfaces.find((entry) => entry.protectedPath === normalized) || boot.surfaces[0];
         }
 
+        function mapProtectedPathToPublicPath(pathname) {
+          const surface = resolveSurfaceByProtectedPath(pathname);
+          return surface ? surface.publicPath : undefined;
+        }
+
+        function buildPublicShellUrl(pathname, search = '', hash = '') {
+          return pathname + search + (hash || '');
+        }
+
         function updateNav(activeSurfaceId) {
+          const preferredHash = readPreferredShellHash();
           document.querySelectorAll('[data-surface-link]').forEach((node) => {
             const targetId = node.getAttribute('data-surface-link');
             if (!targetId) {
@@ -244,11 +297,64 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
             if (node.tagName !== 'A') {
               const surface = boot.surfaces.find((entry) => entry.id === targetId);
               const anchor = document.createElement('a');
-              anchor.href = surface ? surface.publicPath : boot.publicBasePath;
+              anchor.href = buildPublicShellUrl(surface ? surface.publicPath : boot.publicBasePath, '', preferredHash);
               anchor.setAttribute('data-surface-link', targetId);
               anchor.textContent = node.textContent || targetId;
               node.replaceWith(anchor);
+              return;
             }
+
+            const surface = boot.surfaces.find((entry) => entry.id === targetId);
+            node.setAttribute(
+              'href',
+              buildPublicShellUrl(surface ? surface.publicPath : boot.publicBasePath, '', preferredHash),
+            );
+          });
+        }
+
+        function rewriteInjectedContentLinks() {
+          if (!contentEl) {
+            return;
+          }
+
+          const preferredHash = readPreferredShellHash();
+
+          contentEl.querySelectorAll('a[href]').forEach((node) => {
+            if (!(node instanceof HTMLAnchorElement)) {
+              return;
+            }
+            const href = node.getAttribute('href');
+            if (!href) {
+              return;
+            }
+            const targetUrl = new URL(href, location.origin);
+            const publicPath = mapProtectedPathToPublicPath(targetUrl.pathname);
+            if (!publicPath) {
+              return;
+            }
+            node.setAttribute(
+              'href',
+              buildPublicShellUrl(publicPath, targetUrl.search, targetUrl.hash || preferredHash),
+            );
+          });
+
+          contentEl.querySelectorAll('form[action]').forEach((node) => {
+            if (!(node instanceof HTMLFormElement)) {
+              return;
+            }
+            const action = node.getAttribute('action');
+            if (!action) {
+              return;
+            }
+            const targetUrl = new URL(action, location.origin);
+            const publicPath = mapProtectedPathToPublicPath(targetUrl.pathname);
+            if (!publicPath) {
+              return;
+            }
+            node.setAttribute(
+              'action',
+              buildPublicShellUrl(publicPath, targetUrl.search, targetUrl.hash || preferredHash),
+            );
           });
         }
 
@@ -274,6 +380,7 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
           }
           const protectedLocation = new URL(protectedUrl, location.origin);
           const activeSurface = resolveSurfaceByProtectedPath(protectedLocation.pathname);
+          rewriteInjectedContentLinks();
           updateNav(activeSurface.id);
           setStatus('Loaded ' + activeSurface.label + ' through the public same-origin shell.');
         }
@@ -298,15 +405,50 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
           const finalSurface = resolveSurfaceByProtectedPath(finalProtectedUrl.pathname);
           const finalPublicUrl = new URL(finalSurface.publicPath, location.origin);
           finalPublicUrl.search = finalProtectedUrl.search;
-          finalPublicUrl.hash = finalProtectedUrl.hash;
+          finalPublicUrl.hash = finalProtectedUrl.hash || targetUrl.hash || readPreferredShellHash();
           if (location.pathname + location.search + location.hash !== finalPublicUrl.pathname + finalPublicUrl.search + finalPublicUrl.hash) {
             history.replaceState({ surfaceId: finalSurface.id }, '', finalPublicUrl.pathname + finalPublicUrl.search + finalPublicUrl.hash);
           }
         }
 
+        function buildPublicFormSubmission(form, publicUrl) {
+          const method = (form.getAttribute('method') || 'GET').toUpperCase();
+          if (method === 'GET') {
+            const finalUrl = new URL(publicUrl, location.origin);
+            const formData = new FormData(form);
+            for (const [key, value] of formData.entries()) {
+              finalUrl.searchParams.append(key, String(value));
+            }
+            return {
+              publicUrl: finalUrl.pathname + finalUrl.search + finalUrl.hash,
+              requestInit: undefined,
+            };
+          }
+
+          return {
+            publicUrl,
+            requestInit: {
+              method,
+              body: new FormData(form),
+            },
+          };
+        }
+
         document.addEventListener('click', (event) => {
           const target = event.target instanceof Element ? event.target.closest('a[href]') : null;
           if (!(target instanceof HTMLAnchorElement)) {
+            return;
+          }
+          if (
+            event.defaultPrevented ||
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey ||
+            target.hasAttribute('download') ||
+            (target.target && target.target.toLowerCase() !== '_self')
+          ) {
             return;
           }
           const href = target.getAttribute('href');
@@ -320,12 +462,13 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
             return;
           }
           event.preventDefault();
+          const preferredHash = nextUrl.hash || readPreferredShellHash();
           const publicUrl = isProtectedSurface
             ? (() => {
                 const mapped = resolveSurfaceByProtectedPath(nextUrl.pathname);
-                return mapped.publicPath + nextUrl.search + nextUrl.hash;
+                return buildPublicShellUrl(mapped.publicPath, nextUrl.search, preferredHash);
               })()
-            : nextUrl.pathname + nextUrl.search + nextUrl.hash;
+            : buildPublicShellUrl(nextUrl.pathname, nextUrl.search, preferredHash);
           history.pushState({ surfaceId: resolveSurfaceByPublicPath(new URL(publicUrl, location.origin).pathname).id }, '', publicUrl);
           loadSurfaceByPublicUrl(publicUrl).catch((error) => {
             setStatus(error instanceof Error ? error.message : String(error), true);
@@ -344,12 +487,14 @@ function renderPublicShellPage(surface: PublicSurfaceDefinition): string {
             return;
           }
           event.preventDefault();
-          const publicApprovalsUrl = resolveSurfaceByProtectedPath(actionUrl.pathname).publicPath + actionUrl.search + actionUrl.hash;
-          history.replaceState({ surfaceId: 'approvals' }, '', publicApprovalsUrl || boot.publicBasePath);
-          loadSurfaceByPublicUrl(publicApprovalsUrl || boot.publicBasePath, {
-            method: (form.getAttribute('method') || 'GET').toUpperCase(),
-            body: new FormData(form),
-          }).catch((error) => {
+          const publicApprovalsUrl = buildPublicShellUrl(
+            resolveSurfaceByProtectedPath(actionUrl.pathname).publicPath,
+            actionUrl.search,
+            actionUrl.hash || readPreferredShellHash(),
+          );
+          const submission = buildPublicFormSubmission(form, publicApprovalsUrl || boot.publicBasePath);
+          history.replaceState({ surfaceId: 'approvals' }, '', submission.publicUrl);
+          loadSurfaceByPublicUrl(submission.publicUrl, submission.requestInit).catch((error) => {
             setStatus(error instanceof Error ? error.message : String(error), true);
           });
         });
