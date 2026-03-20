@@ -3095,7 +3095,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
   });
 
   it('serves a public same-origin shell that can load protected ClawGuard pages without a userscript', () => {
-    const route = createPublicShellRoute();
+    const route = createPublicShellRoute(createClawGuardState());
 
     const htmlResponse = createMockResponse();
     route(
@@ -3128,7 +3128,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
   });
 
   it('maps public same-origin deep links to the matching protected ClawGuard surfaces', () => {
-    const route = createPublicShellRoute();
+    const route = createPublicShellRoute(createClawGuardState());
 
     const dashboardResponse = createMockResponse();
     route(
@@ -3155,6 +3155,30 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(auditResponse.body).toContain('"initialSurfaceId":"audit"');
     expect(auditResponse.body).toContain('"publicPath":"/clawguard/audit"');
     expect(auditResponse.body).toContain('"protectedPath":"/plugins/clawguard/audit"');
+  });
+
+  it('accepts approvals actions on the public shell surface and redirects back to /clawguard/approvals', () => {
+    const state = createClawGuardState();
+    const beforeHandler = createBeforeToolCallHandler(state);
+    const { event, context } = createRiskyExecEvent();
+
+    expect(beforeHandler(event, context)).toMatchObject({ block: true });
+    const pending = state.pendingActions.list()[0];
+    expect(pending).toBeDefined();
+
+    const route = createPublicShellRoute(state);
+    const response = createMockResponse();
+    route(
+      {
+        method: 'POST',
+        url: `/clawguard/approvals/${pending.pending_action_id}/approve`,
+      } as never,
+      response as never,
+    );
+
+    expect(response.statusCode).toBe(303);
+    expect(response.headers.get('location')).toBe('/clawguard/approvals');
+    expect(state.pendingActions.list()[0]?.status).toBe('approved_waiting_retry');
   });
 
   it('serves the dashboard-centered smoke path and exposes audit entries from the fake-only approval flow', () => {

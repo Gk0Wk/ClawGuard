@@ -73,7 +73,7 @@ const plugin = {
       path: PUBLIC_SHELL_ROUTE_BASE_PATH,
       auth: 'plugin',
       match: 'prefix',
-      handler: createPublicShellRoute(),
+      handler: createPublicShellRoute(state),
     });
     api.registerHttpRoute({
       path: DASHBOARD_ROUTE_PATH,

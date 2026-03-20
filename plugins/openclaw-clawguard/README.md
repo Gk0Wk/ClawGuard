@@ -91,6 +91,8 @@ Within the shell, ClawGuard now rewrites protected page links and approval form 
 
 If you arrive at bare `/clawguard` from an already authenticated official dashboard tab, the shell now promotes the current tab gateway token into its own session-scoped shell token cache and continues to emit tokenized `/clawguard#token=...` links. This keeps copied links and new-tab shell links stable inside the same browser session without patching OpenClaw core.
 
+The public shell route itself now also accepts approval actions on `/clawguard/approvals/:pendingActionId/approve` and `/clawguard/approvals/:pendingActionId/deny`, so approval submits no longer depend on falling back to the protected `/plugins/clawguard/approvals/*` action paths.
+
 ### Legacy companion userscript
 
 The companion userscript remains in the repo as a development fallback, but it is no longer the primary user entry path:
