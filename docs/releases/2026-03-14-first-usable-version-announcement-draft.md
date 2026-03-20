@@ -13,11 +13,11 @@ What you can do today:
 1. Install locally from the repo root with `openclaw plugins install .\plugins\openclaw-clawguard`
 2. Restart OpenClaw
 3. Open:
-   - `/plugins/clawguard/dashboard`
-   - `/plugins/clawguard/checkup`
-   - `/plugins/clawguard/approvals`
-   - `/plugins/clawguard/audit`
-   - `/plugins/clawguard/settings`
+   - `/clawguard`
+   - `/clawguard/checkup`
+   - `/clawguard/approvals`
+   - `/clawguard/audit`
+   - `/clawguard/settings`
 4. Walk through a narrow fake-only demo across risky `exec`, minimal outbound review points where host-level direct sends stay on the hard-block path, and workspace mutation actions currently limited to `write` / `edit` / `apply_patch`
 
 What this proves:

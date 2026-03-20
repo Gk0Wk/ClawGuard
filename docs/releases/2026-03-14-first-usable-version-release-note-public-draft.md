@@ -12,7 +12,7 @@ It gives new users one honest path to try ClawGuard today:
 
 - install the plugin locally,
 - restart OpenClaw,
-- open the plugin-owned dashboard / checkup / approvals / audit / settings pages,
+- open the plugin-owned public shell entry and move through dashboard / checkup / approvals / audit / settings,
 - and walk through a few **fake-only** approval and audit scenarios.
 
 ## What users can do today
@@ -21,12 +21,16 @@ It gives new users one honest path to try ClawGuard today:
   - `openclaw plugins install .\plugins\openclaw-clawguard`
 - Optionally build one **local-only** tarball for demo packaging:
   - `pnpm --dir plugins\openclaw-clawguard pack`
-- Restart OpenClaw and smoke:
-  - `/plugins/clawguard/dashboard`
-  - `/plugins/clawguard/checkup`
-  - `/plugins/clawguard/approvals`
-  - `/plugins/clawguard/audit`
-  - `/plugins/clawguard/settings`
+- Restart OpenClaw and enter through the public shell:
+  - run `openclaw dashboard --no-open`
+  - replace the official tokenized dashboard URL path with `/clawguard`
+  - or open `/clawguard#token=<gateway-token>` directly on the same origin
+- Smoke:
+  - `/clawguard`
+  - `/clawguard/checkup`
+  - `/clawguard/approvals`
+  - `/clawguard/audit`
+  - `/clawguard/settings`
 - Run a narrow demo surface across:
   - risky `exec`
   - minimal outbound review points, where host-level direct sends stay on the hard-block path and tool-level approvals remain on `message` / `sessions_send`
@@ -34,13 +38,14 @@ It gives new users one honest path to try ClawGuard today:
 
 ## Recommended smoke path
 
-1. Open `/plugins/clawguard/dashboard`
-2. Open `/plugins/clawguard/checkup`
-3. Open `/plugins/clawguard/approvals`
-4. Open `/plugins/clawguard/audit`
-5. Open `/plugins/clawguard/settings`
-6. Run one fake-only risky `exec` example
-7. If needed, add one fake-only outbound example and one fake-only workspace mutation example
+1. Run `openclaw dashboard --no-open`
+2. Replace the official tokenized dashboard URL path with `/clawguard`
+3. Open `/clawguard/checkup`
+4. Open `/clawguard/approvals`
+5. Open `/clawguard/audit`
+6. Open `/clawguard/settings`
+7. Run one fake-only risky `exec` example
+8. If needed, add one fake-only outbound example and one fake-only workspace mutation example
 
 ## Recommended demo order
 
@@ -64,7 +69,7 @@ It gives new users one honest path to try ClawGuard today:
 ## What this version proves
 
 - ClawGuard has a **usable local OpenClaw plugin install path**
-- The plugin can serve its own operator pages under `/plugins/clawguard/*`
+- The plugin can serve its own protected operator pages under `/plugins/clawguard/*`, with `/clawguard*` as the supported browser-facing entry path
 - The current approval + audit loop is understandable enough for a first install demo
 - The current demo surface can explain a narrow set of fake-only flows across `exec`, outbound, and workspace mutation actions
 - The current repository validation baseline is green:

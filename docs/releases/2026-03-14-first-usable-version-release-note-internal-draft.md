@@ -16,12 +16,13 @@ It does **not** broaden runtime scope. It packages the current codebase and unre
 
 - OpenClaw native plugin install from local repo path
 - Optional local tarball path for demo packaging only
-- Plugin-owned pages:
-  - `/plugins/clawguard/dashboard`
-  - `/plugins/clawguard/checkup`
-  - `/plugins/clawguard/approvals`
-  - `/plugins/clawguard/audit`
-  - `/plugins/clawguard/settings`
+- Plugin-owned public shell browser path:
+  - `/clawguard`
+  - `/clawguard/checkup`
+  - `/clawguard/approvals`
+  - `/clawguard/audit`
+  - `/clawguard/settings`
+- Protected backing routes remain under `/plugins/clawguard/*`
 - Pending-action + allow-once-retry approval loop
 - Audit closure for the current demo flows
 
@@ -57,11 +58,12 @@ It does **not** broaden runtime scope. It packages the current codebase and unre
 ### Smoke
 
 1. Restart OpenClaw
-2. Open `/plugins/clawguard/dashboard`
-3. Open `/plugins/clawguard/checkup`
-4. Open `/plugins/clawguard/approvals`
-5. Open `/plugins/clawguard/audit`
-6. Open `/plugins/clawguard/settings`
+2. Run `openclaw dashboard --no-open`
+3. Replace the official tokenized dashboard URL path with `/clawguard`
+4. Open `/clawguard/checkup`
+5. Open `/clawguard/approvals`
+6. Open `/clawguard/audit`
+7. Open `/clawguard/settings`
 
 ### Demo order
 
@@ -75,7 +77,7 @@ It does **not** broaden runtime scope. It packages the current codebase and unre
 ## What this version proves
 
 - We have a repeatable local install story for the OpenClaw plugin baseline
-- We have a stable operator smoke path on plugin-owned routes
+- We have a stable operator smoke path on the plugin-owned public shell surface, backed by protected plugin routes
 - We can explain the current approval / audit loop without implying nonexistent resume or embedded Control UI features
 - We can truthfully describe the current scope without implying publish, GA, or broad runtime completeness
 - Current local validation baseline remains:
@@ -100,7 +102,7 @@ It does **not** broaden runtime scope. It packages the current codebase and unre
 - Say **fake-only** whenever demo scenarios are mentioned
 - Say **minimal outbound review points**, not host-level approvals or complete outbound lifecycle
 - Say **workspace mutation demo surface currently means `write` / `edit` / `apply_patch`**, not broad workspace governance
-- Say **direct plugin routes**, not embedded Control UI
+- Say **public shell entry path `/clawguard*` backed by protected plugin routes**, not embedded Control UI
 
 ## Validation
 
