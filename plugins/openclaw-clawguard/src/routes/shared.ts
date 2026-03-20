@@ -108,8 +108,8 @@ export const INSTALL_DEMO = {
   published: false,
   demoPosture:
     'Alpha install-demo only. Unpublished and fake-only. This remains a plugin-owned page rather than a stock Control UI Security tab.',
-  packageName: '@clawguard/openclaw-clawguard',
-  packageNamePosture: 'Metadata and future compatibility placeholder only.',
+  packageName: '@clawguard/clawguard',
+  packageNamePosture: 'Metadata only; aligned with manifest id and not published.',
   recommendedMethod: 'Local path install from the repo root.',
   recommendedCommand: 'openclaw plugins install .\\plugins\\openclaw-clawguard',
   optionalMethod: 'Local tarball install only. No registry implication.',

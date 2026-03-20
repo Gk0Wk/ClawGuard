@@ -456,7 +456,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     };
     const surface = listInstallDemoPackageSurface(installDemoPluginRoot);
 
-    expect(packageManifest.name).toBe('@clawguard/openclaw-clawguard');
+    expect(packageManifest.name).toBe('@clawguard/clawguard');
     expect(packageManifest.version).toBe('0.0.0-demo.0');
     expect(packageManifest.description).toContain('Install-demo');
     expect(packageManifest.main).toBe('./dist/index.js');
@@ -470,13 +470,13 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     expect(packageManifest.openclaw).toMatchObject({
       extensions: ['./dist/index.js'],
       install: {
-        npmSpec: '@clawguard/openclaw-clawguard',
+        npmSpec: '@clawguard/clawguard',
         localPath: 'plugins/openclaw-clawguard',
         defaultChoice: 'local',
         published: false,
         recommendedMethod: 'local-path-from-repo-root',
         optionalMethod: 'local-tarball-only',
-        packageNamePosture: 'metadata and future compatibility placeholder only',
+        packageNamePosture: 'metadata only; aligned with manifest id and not published',
       },
     });
     expect(surface).toEqual(
@@ -544,7 +544,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
       expect.arrayContaining(['dist', 'openclaw.plugin.json', 'README.md']),
     );
     expect(packageManifest.openclaw.install).toMatchObject({
-      npmSpec: '@clawguard/openclaw-clawguard',
+      npmSpec: '@clawguard/clawguard',
       localPath: 'plugins/openclaw-clawguard',
       defaultChoice: 'local',
       published: false,
@@ -3071,7 +3071,7 @@ describe('OpenClaw ClawGuard plugin spike', () => {
         title: 'ClawGuard for OpenClaw install demo',
         releaseStatus: 'Install demo only. Not a formal release.',
         published: false,
-        packageName: '@clawguard/openclaw-clawguard',
+        packageName: '@clawguard/clawguard',
         recommendedMethod: 'Local path install from the repo root.',
         recommendedCommand: 'openclaw plugins install .\\plugins\\openclaw-clawguard',
         optionalMethod: 'Local tarball install only. No registry implication.',

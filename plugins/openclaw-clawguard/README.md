@@ -4,7 +4,7 @@ This directory contains the **ClawGuard for OpenClaw install demo**.
 
 - It is **not a formal release**
 - It is **not published to any registry**
-- The package name `@clawguard/openclaw-clawguard` is metadata only and a future-compatibility placeholder
+- The package name `@clawguard/clawguard` is metadata only, aligned with the plugin manifest id, and still unpublished
 
 > [!IMPORTANT]
 > **Install demo only.**

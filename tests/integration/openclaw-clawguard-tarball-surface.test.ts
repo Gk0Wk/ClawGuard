@@ -67,7 +67,7 @@ describe('openclaw clawguard install-demo tarball surface', () => {
     const packedPaths = packResult.files.map((entry) => entry.path).sort();
     const expectedTarballPath = path.join(
       installDemoPluginRoot,
-      `clawguard-openclaw-clawguard-${packageManifest.version}.tgz`,
+      `clawguard-clawguard-${packageManifest.version}.tgz`,
     );
     const resolvedTarballPath = path.resolve(installDemoPluginRoot, packResult.filename);
 
