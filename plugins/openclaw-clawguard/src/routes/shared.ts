@@ -8,6 +8,14 @@ export const APPROVALS_ROUTE_PATH = '/plugins/clawguard/approvals';
 export const AUDIT_ROUTE_PATH = '/plugins/clawguard/audit';
 export const SETTINGS_ROUTE_PATH = '/plugins/clawguard/settings';
 
+export function normalizeClawGuardPagePath(pathname: string): string {
+  if (pathname.length > 1) {
+    return pathname.replace(/\/+$/u, '');
+  }
+
+  return pathname;
+}
+
 export type OperatorActionId =
   | 'review-approvals'
   | 'retry-approved-actions'

@@ -2392,6 +2392,42 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     });
   });
 
+  it('accepts dashboard and checkup page routes with a trailing slash', () => {
+    const state = createClawGuardState();
+    const dashboardRoute = createDashboardRoute(state);
+    const checkupRoute = createCheckupRoute(state);
+
+    const dashboardHtmlResponse = createMockResponse();
+    dashboardRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/dashboard/',
+      } as never,
+      dashboardHtmlResponse as never,
+    );
+
+    expect(dashboardHtmlResponse.statusCode).toBe(200);
+    expect(dashboardHtmlResponse.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(dashboardHtmlResponse.body).toContain('ClawGuard dashboard');
+
+    const checkupJsonResponse = createMockResponse();
+    checkupRoute(
+      {
+        method: 'GET',
+        url: '/plugins/clawguard/checkup/?format=json',
+      } as never,
+      checkupJsonResponse as never,
+    );
+
+    expect(checkupJsonResponse.statusCode).toBe(200);
+    expect(checkupJsonResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(JSON.parse(checkupJsonResponse.body)).toMatchObject({
+      installDemo: {
+        title: 'ClawGuard for OpenClaw install demo',
+      },
+    });
+  });
+
   it('keeps quick-scan fields anchored to the latest relevant audit entry per lane', () => {
     const state = createClawGuardState();
     state.audit.record({
@@ -4203,9 +4239,9 @@ describe('OpenClaw ClawGuard plugin spike', () => {
     );
 
     expect(dashboardRoute?.auth).toBe('gateway');
-    expect(dashboardRoute?.match).toBe('exact');
+    expect(dashboardRoute?.match).toBe('prefix');
     expect(checkupRoute?.auth).toBe('gateway');
-    expect(checkupRoute?.match).toBe('exact');
+    expect(checkupRoute?.match).toBe('prefix');
     expect(approvalsRoute?.auth).toBe('gateway');
     expect(approvalsRoute?.match).toBe('prefix');
     expect(auditRoute?.auth).toBe('gateway');

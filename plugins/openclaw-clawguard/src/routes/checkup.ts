@@ -6,6 +6,7 @@ import {
   CHECKUP_ROUTE_PATH,
   DASHBOARD_ROUTE_PATH,
   INSTALL_DEMO,
+  normalizeClawGuardPagePath,
   renderClawGuardNav,
   renderControlSurfaceIntro,
   renderCoverageMatrix,
@@ -150,7 +151,7 @@ function renderCheckupPage(state: ClawGuardState): string {
 export function createCheckupRoute(state: ClawGuardState) {
   return (req: IncomingMessage, res: ServerResponse): true | void => {
     const url = new URL(req.url ?? CHECKUP_ROUTE_PATH, 'http://localhost');
-    if (url.pathname !== CHECKUP_ROUTE_PATH) {
+    if (normalizeClawGuardPagePath(url.pathname) !== CHECKUP_ROUTE_PATH) {
       return undefined;
     }
 

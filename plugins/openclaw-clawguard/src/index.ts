@@ -71,13 +71,13 @@ const plugin = {
     api.registerHttpRoute({
       path: DASHBOARD_ROUTE_PATH,
       auth: 'gateway',
-      match: 'exact',
+      match: 'prefix',
       handler: createDashboardRoute(state),
     });
     api.registerHttpRoute({
       path: CHECKUP_ROUTE_PATH,
       auth: 'gateway',
-      match: 'exact',
+      match: 'prefix',
       handler: createCheckupRoute(state),
     });
     api.registerHttpRoute({

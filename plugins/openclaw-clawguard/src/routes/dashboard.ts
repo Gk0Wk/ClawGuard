@@ -11,6 +11,7 @@ import {
   buildRecentAuditQuickScan,
   createOperatorQuickAction,
   createRecommendedOperatorAction,
+  normalizeClawGuardPagePath,
   renderClawGuardNav,
   renderControlSurfaceIntro,
   renderCoverageMatrix,
@@ -606,7 +607,7 @@ function renderDashboardPage(state: ClawGuardState): string {
 export function createDashboardRoute(state: ClawGuardState) {
   return (req: IncomingMessage, res: ServerResponse): true | void => {
     const url = new URL(req.url ?? DASHBOARD_ROUTE_PATH, 'http://localhost');
-    if (url.pathname !== DASHBOARD_ROUTE_PATH) {
+    if (normalizeClawGuardPagePath(url.pathname) !== DASHBOARD_ROUTE_PATH) {
       return undefined;
     }
 
